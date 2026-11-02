@@ -1,11 +1,11 @@
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import './App.css'
 import { lazy } from 'react';
-import Header from './components/header/header';
-import Footer from './components/footer/footer';
+import Header from './views/header/header';
+import Footer from './views/footer/footer';
 
-const Login = lazy(() => import('./components/login/login'));
-const Home = lazy(() => import('./components/home/home'));
+const Login = lazy(() => import('./views/login/login'));
+const Home = lazy(() => import('./views/home/home'));
 
 function AppContent() {
   const { pathname } = useLocation();
