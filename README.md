@@ -1,5 +1,13 @@
 # React + Vite
 
+## Deploy to Vercel
+
+Import this repository in Vercel and use the Vite framework preset. The project
+uses `npm run build` to generate the production files in `dist`. The `vercel.json`
+rewrite keeps React Router routes working when users open or refresh them directly.
+
+You can also deploy from the Vercel CLI with `vercel --prod`.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
