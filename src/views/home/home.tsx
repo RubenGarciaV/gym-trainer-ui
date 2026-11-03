@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Bar,
   BarChart,
@@ -10,7 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { apiRequest } from "../../api/client";
+import { Plus, X } from "lucide-react";
+import { apiRequest, jsonRequest } from "../../api/client";
 import type { WeightEntry, Workout } from "../../api/types";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
@@ -23,6 +24,12 @@ const Home = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isWeightFormOpen, setIsWeightFormOpen] = useState(false);
+  const [weightInput, setWeightInput] = useState("");
+  const [isSavingWeight, setIsSavingWeight] = useState(false);
+  const [weightError, setWeightError] = useState("");
+  const [weightSuccess, setWeightSuccess] = useState("");
+  const weightDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -53,6 +60,17 @@ const Home = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const dialog = weightDialogRef.current;
+    if (!dialog) return;
+
+    if (isWeightFormOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isWeightFormOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isWeightFormOpen]);
+
   const weightHistory = weightEntries
     .slice()
     .reverse()
@@ -60,6 +78,44 @@ const Home = () => {
       date: dateFormatter.format(new Date(entry.measuredAt)),
       weight: entry.weightKg,
     }));
+
+  const handleAddWeight = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setWeightError("");
+    setWeightSuccess("");
+    setIsSavingWeight(true);
+
+    const measuredAt = new Date();
+    measuredAt.setHours(0, 0, 0, 0);
+
+    try {
+      const entry = await apiRequest<WeightEntry>(
+        "/api/v1/weight-entries",
+        jsonRequest("POST", {
+          weightKg: Number(weightInput),
+          measuredAt: measuredAt.toISOString(),
+        }),
+      );
+      setWeightEntries((current) =>
+        [...current, entry].sort(
+          (a, b) =>
+            new Date(b.measuredAt).getTime() -
+            new Date(a.measuredAt).getTime(),
+        ),
+      );
+      setWeightInput("");
+      setIsWeightFormOpen(false);
+      setWeightSuccess("Peso registrado para hoy.");
+    } catch (requestError) {
+      setWeightError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudo registrar el peso.",
+      );
+    } finally {
+      setIsSavingWeight(false);
+    }
+  };
 
   const workoutDurationHistory = workouts
     .filter(
@@ -99,7 +155,27 @@ const Home = () => {
       ) : (
         <>
           <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-4 text-lg font-bold">Evolución del peso</h2>
+            <header className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold">Evolución del peso</h2>
+              <button
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700"
+                onClick={() => {
+                  setIsWeightFormOpen(true);
+                  setWeightError("");
+                  setWeightSuccess("");
+                }}
+                type="button"
+              >
+                <Plus aria-hidden="true" size={16} />
+                Añadir peso
+              </button>
+            </header>
+
+            {weightSuccess && (
+              <p className="mb-3 text-sm text-emerald-700" role="status">
+                {weightSuccess}
+              </p>
+            )}
             {weightHistory.length ? (
               <div className="history-chart h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -133,6 +209,88 @@ const Home = () => {
               </p>
             )}
           </article>
+
+          <dialog
+            aria-labelledby="weight-dialog-title"
+            aria-describedby="weight-dialog-description"
+            className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white p-0 text-slate-800 shadow-xl backdrop:bg-slate-950/50"
+            onCancel={(event) => {
+              event.preventDefault();
+              setIsWeightFormOpen(false);
+            }}
+            onClose={() => setIsWeightFormOpen(false)}
+            onClick={(event) => {
+              if (event.target === weightDialogRef.current) {
+                setIsWeightFormOpen(false);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setIsWeightFormOpen(false);
+              }
+            }}
+            ref={weightDialogRef}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h2 className="text-lg font-bold" id="weight-dialog-title">
+                Añadir peso
+              </h2>
+              <button
+                aria-label="Cerrar"
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                onClick={() => setIsWeightFormOpen(false)}
+                type="button"
+              >
+                <X aria-hidden="true" size={20} />
+              </button>
+            </div>
+            <form className="space-y-4 p-5" onSubmit={handleAddWeight}>
+              <p
+                className="text-sm text-slate-600"
+                id="weight-dialog-description"
+              >
+                La medición se guardará con la fecha de hoy, sin hora.
+              </p>
+              <label className="block space-y-1">
+                <span className="block text-sm font-medium text-slate-700">
+                  Peso (kg)
+                </span>
+                <input
+                  autoFocus
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                  max="999.99"
+                  min="1"
+                  onChange={(event) => setWeightInput(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={weightInput}
+                />
+              </label>
+              {weightError && (
+                <p className="text-sm text-red-700" role="alert">
+                  {weightError}
+                </p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={() => setIsWeightFormOpen(false)}
+                  type="button"
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isSavingWeight}
+                  type="submit"
+                >
+                  {isSavingWeight ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
+            </form>
+          </dialog>
 
           <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="mb-4 text-lg font-bold">
