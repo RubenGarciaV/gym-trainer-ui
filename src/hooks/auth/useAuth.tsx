@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest, jsonRequest } from "../../api/client";
 import type { AuthUser } from "../../api/types";
+import { useToast } from "../../components/toast-provider";
 import { useSession } from "./session-context";
 
 interface UserData {
@@ -19,11 +20,11 @@ interface UseAuth {
   setUserData: React.Dispatch<React.SetStateAction<UserData>>;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   isLoading: boolean;
-  error: string;
 }
 
 export const useAuth = (): UseAuth => {
   const navigate = useNavigate();
+  const showToast = useToast();
   const { setUser } = useSession();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [userData, setUserData] = useState<UserData>({
@@ -32,16 +33,12 @@ export const useAuth = (): UseAuth => {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
   const changeMode = (nextMode: AuthMode) => {
-    setError("");
     setMode(nextMode);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
     setIsLoading(true);
 
     try {
@@ -56,9 +53,14 @@ export const useAuth = (): UseAuth => {
       );
 
       setUser(result.user);
+      showToast(
+        "success",
+        mode === "sign-up" ? "Tu cuenta se ha creado." : "Sesión iniciada.",
+      );
       navigate("/home");
     } catch (requestError) {
-      setError(
+      showToast(
+        "error",
         requestError instanceof Error
           ? requestError.message
           : "No se pudo conectar con el servidor. Inténtalo de nuevo.",
@@ -75,6 +77,5 @@ export const useAuth = (): UseAuth => {
     setUserData,
     handleSubmit,
     isLoading,
-    error,
   };
 };

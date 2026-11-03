@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../api/client";
+import { useToast } from "../../components/toast-provider";
 import type { Workout } from "../../api/types";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
@@ -20,9 +21,9 @@ const formatDuration = (startedAt: string | null, completedAt: string) => {
 };
 
 const History = () => {
+  const showToast = useToast();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -33,7 +34,8 @@ const History = () => {
       })
       .catch((requestError: unknown) => {
         if (!active) return;
-        setError(
+        showToast(
+          "error",
           requestError instanceof Error
             ? requestError.message
             : "No se pudo cargar el historial de entrenamientos.",
@@ -46,7 +48,7 @@ const History = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [showToast]);
 
   return (
     <section className="space-y-5 p-4">
@@ -57,11 +59,6 @@ const History = () => {
         </p>
       </div>
 
-      {error && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
       {isLoading ? (
         <p className="text-sm text-slate-500">Cargando historial...</p>
       ) : workouts.length === 0 ? (

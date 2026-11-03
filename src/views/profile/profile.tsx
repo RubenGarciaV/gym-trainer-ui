@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest, jsonRequest } from "../../api/client";
+import { useToast } from "../../components/toast-provider";
 import { useSession } from "../../hooks/auth/session-context";
 
 const Profile = () => {
+  const showToast = useToast();
   const { user, setUser, refreshSession, isSessionLoading, sessionError } =
     useSession();
   const [name, setName] = useState("");
@@ -12,17 +14,17 @@ const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     if (user) setName(user.name);
   }, [user]);
 
+  useEffect(() => {
+    if (sessionError) showToast("error", sessionError);
+  }, [sessionError, showToast]);
+
   const handleUpdateName = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
-    setSuccess("");
     setIsSavingName(true);
 
     try {
@@ -31,9 +33,10 @@ const Profile = () => {
       if (!updatedUser) throw new Error("No se pudo actualizar la sesión.");
       setUser(updatedUser);
       setName(updatedUser.name);
-      setSuccess("Tu nombre se ha actualizado.");
+      showToast("success", "Tu nombre se ha actualizado.");
     } catch (requestError) {
-      setError(
+      showToast(
+        "error",
         requestError instanceof Error
           ? requestError.message
           : "No se pudo actualizar tu nombre.",
@@ -45,15 +48,13 @@ const Profile = () => {
 
   const handleChangePassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
-    setSuccess("");
 
     if (newPassword !== confirmPassword) {
-      setError("La nueva contraseña y su confirmación no coinciden.");
+      showToast("error", "La nueva contraseña y su confirmación no coinciden.");
       return;
     }
     if (newPassword.length < 8) {
-      setError("La nueva contraseña debe tener al menos 8 caracteres.");
+      showToast("error", "La nueva contraseña debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -70,9 +71,10 @@ const Profile = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setSuccess("Tu contraseña se ha actualizado.");
+      showToast("success", "Tu contraseña se ha actualizado.");
     } catch (requestError) {
-      setError(
+      showToast(
+        "error",
         requestError instanceof Error
           ? requestError.message
           : "No se pudo cambiar la contraseña.",
@@ -86,7 +88,8 @@ const Profile = () => {
     try {
       await refreshSession();
     } catch (requestError) {
-      setError(
+      showToast(
+        "error",
         requestError instanceof Error
           ? requestError.message
           : "No se pudo cargar el perfil.",
@@ -102,25 +105,6 @@ const Profile = () => {
           Gestiona tus datos y la contraseña de tu cuenta.
         </p>
       </div>
-
-      {error && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      {success && (
-        <p
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700"
-          role="status"
-        >
-          {success}
-        </p>
-      )}
-      {sessionError && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
-          {sessionError}
-        </p>
-      )}
 
       {isSessionLoading ? (
         <p className="text-sm text-slate-500">Cargando perfil...</p>

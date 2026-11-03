@@ -1,9 +1,17 @@
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import './App.css'
-import { lazy } from 'react';
+import { lazy, useEffect } from 'react';
 import Header from './views/header/header';
 import Footer from './views/footer/footer';
-import { SessionProvider } from './hooks/auth/session-context';
+import { SessionProvider, useSession } from './hooks/auth/session-context';
+import { ToastProvider } from './components/toast-provider';
+import { useToast } from './components/toast-provider';
 
 const Login = lazy(() => import('./views/login/login'));
 const Home = lazy(() => import('./views/home/home'));
@@ -13,8 +21,27 @@ const Profile = lazy(() => import('./views/profile/profile'));
 const History = lazy(() => import('./views/history/history'));
 
 function AppContent() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
+  const { user, isSessionLoading, sessionError } = useSession();
+  const showToast = useToast();
   const showNavigation = pathname !== '/';
+
+  useEffect(() => {
+    if (sessionError) showToast('error', sessionError);
+  }, [sessionError, showToast]);
+
+  if (showNavigation && isSessionLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center text-sm text-slate-500" role="status">
+        Cargando sesión...
+      </main>
+    );
+  }
+
+  if (showNavigation && !user) {
+    return <Navigate to="/" replace state={{ from: location }} />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -38,9 +65,11 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <SessionProvider>
-        <AppContent />
-      </SessionProvider>
+      <ToastProvider>
+        <SessionProvider>
+          <AppContent />
+        </SessionProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

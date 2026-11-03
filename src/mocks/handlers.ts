@@ -262,6 +262,93 @@ const jsonError = (message: string, status: number) =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const parseRoutineExercises = (
+  values: unknown,
+):
+  | { exercises: MockRoutineExercise[] }
+  | { error: string } => {
+  if (!Array.isArray(values) || values.length > 100) {
+    return { error: "Indica una lista de ejercicios válida." };
+  }
+
+  const parsedExercises: MockRoutineExercise[] = [];
+  const positions = new Set<number>();
+  for (const [position, value] of values.entries()) {
+    if (
+      !isRecord(value) ||
+      typeof value.exerciseId !== "string" ||
+      typeof value.position !== "number" ||
+      !Number.isInteger(value.position) ||
+      value.position < 0 ||
+      value.position > 1000 ||
+      !Array.isArray(value.sets) ||
+      value.sets.length < 1 ||
+      value.sets.length > 100 ||
+      typeof value.restSeconds !== "number" ||
+      !Number.isInteger(value.restSeconds) ||
+      value.restSeconds < 0 ||
+      value.restSeconds > 3600
+    ) {
+      return { error: "Los datos de uno de los ejercicios no son válidos." };
+    }
+
+    if (positions.has(value.position)) {
+      return { error: "Las posiciones de los ejercicios deben ser únicas." };
+    }
+    positions.add(value.position);
+
+    const exercise = exerciseCatalog.find(
+      (candidate) => candidate.id === value.exerciseId,
+    );
+    if (!exercise) return { error: "El ejercicio no existe." };
+
+    const routineSets: MockRoutineSet[] = [];
+    const setNumbers = new Set<number>();
+    for (const set of value.sets) {
+      if (
+        !isRecord(set) ||
+        typeof set.setNumber !== "number" ||
+        !Number.isInteger(set.setNumber) ||
+        set.setNumber < 1 ||
+        set.setNumber > 100 ||
+        typeof set.reps !== "number" ||
+        !Number.isInteger(set.reps) ||
+        set.reps < 1 ||
+        set.reps > 1000 ||
+        (set.weightKg !== undefined &&
+          set.weightKg !== null &&
+          (typeof set.weightKg !== "number" ||
+            !Number.isFinite(set.weightKg) ||
+            set.weightKg < 0 ||
+            set.weightKg > 99999.99))
+      ) {
+        return { error: "Los datos de una de las series no son válidos." };
+      }
+      if (setNumbers.has(set.setNumber)) {
+        return { error: "Los números de serie deben ser únicos." };
+      }
+      setNumbers.add(set.setNumber);
+      routineSets.push({
+        id: crypto.randomUUID(),
+        setNumber: set.setNumber,
+        reps: set.reps,
+        weightKg: typeof set.weightKg === "number" ? set.weightKg : null,
+      });
+    }
+
+    parsedExercises.push({
+      id: crypto.randomUUID(),
+      exerciseId: exercise.id,
+      position: value.position ?? position,
+      sets: routineSets.sort((a, b) => a.setNumber - b.setNumber),
+      restSeconds: value.restSeconds,
+      exercise,
+    });
+  }
+
+  return { exercises: parsedExercises };
+};
+
 const isAuthRequest = (value: unknown): value is AuthRequest =>
   isRecord(value);
 
@@ -406,6 +493,13 @@ export const handlers = [
   http.get("*/api/auth/get-session", ({ request }) => {
     const user = getActiveUser(request);
     return HttpResponse.json(user ? getAuthSession(user) : null);
+  }),
+
+  http.post("*/api/auth/sign-out", ({ request }) => {
+    const { response } = requireActiveUser(request);
+    if (response) return response;
+
+    return HttpResponse.json({ success: true });
   }),
 
   http.post("*/api/auth/update-user", async ({ request }) => {
@@ -555,87 +649,15 @@ export const handlers = [
       !isRecord(body) ||
       typeof body.name !== "string" ||
       !body.name.trim() ||
+      body.name.trim().length > 100 ||
       !Array.isArray(body.exercises)
     ) {
       return jsonError("Indica un nombre y una lista de ejercicios.", 400);
     }
 
-    const routineExercises: MockRoutineExercise[] = [];
-    const positions = new Set<number>();
-    for (const [position, value] of body.exercises.entries()) {
-      if (
-        !isRecord(value) ||
-        typeof value.exerciseId !== "string" ||
-        typeof value.position !== "number" ||
-        !Number.isInteger(value.position) ||
-        !Array.isArray(value.sets) ||
-        value.sets.length < 1 ||
-        value.sets.length > 100 ||
-        typeof value.restSeconds !== "number"
-      ) {
-        return jsonError("Los datos de uno de los ejercicios no son válidos.", 400);
-      }
-
-      if (positions.has(value.position)) {
-        return jsonError("Las posiciones de los ejercicios deben ser únicas.", 400);
-      }
-      positions.add(value.position);
-
-      const routineSets: MockRoutineSet[] = [];
-      const setNumbers = new Set<number>();
-      for (const set of value.sets) {
-        if (
-          !isRecord(set) ||
-          typeof set.setNumber !== "number" ||
-          !Number.isInteger(set.setNumber) ||
-          set.setNumber < 1 ||
-          set.setNumber > 100 ||
-          typeof set.reps !== "number" ||
-          !Number.isInteger(set.reps) ||
-          set.reps < 1 ||
-          set.reps > 1000 ||
-          (set.weightKg !== undefined &&
-            set.weightKg !== null &&
-            (typeof set.weightKg !== "number" ||
-              !Number.isFinite(set.weightKg) ||
-              set.weightKg < 0 ||
-              set.weightKg > 99999.99))
-        ) {
-          return jsonError("Los datos de una de las series no son válidos.", 400);
-        }
-        if (setNumbers.has(set.setNumber)) {
-          return jsonError("Los números de serie deben ser únicos.", 400);
-        }
-        setNumbers.add(set.setNumber);
-        routineSets.push({
-          id: crypto.randomUUID(),
-          setNumber: set.setNumber,
-          reps: set.reps,
-          weightKg: typeof set.weightKg === "number" ? set.weightKg : null,
-        });
-      }
-
-      if (
-        !Number.isInteger(value.restSeconds) ||
-        value.restSeconds < 0 ||
-        value.restSeconds > 3600
-      ) {
-        return jsonError("El descanso entre series no es válido.", 400);
-      }
-
-      const exercise = exerciseCatalog.find(
-        (candidate) => candidate.id === value.exerciseId,
-      );
-      if (!exercise) return jsonError("El ejercicio no existe.", 400);
-
-      routineExercises.push({
-        id: crypto.randomUUID(),
-        exerciseId: exercise.id,
-        position: value.position ?? position,
-        sets: routineSets.sort((a, b) => a.setNumber - b.setNumber),
-        restSeconds: value.restSeconds,
-        exercise,
-      });
+    const parsedExercises = parseRoutineExercises(body.exercises);
+    if ("error" in parsedExercises) {
+      return jsonError(parsedExercises.error, 400);
     }
 
     const timestamp = new Date().toISOString();
@@ -645,9 +667,66 @@ export const handlers = [
       name: body.name.trim(),
       createdAt: timestamp,
       updatedAt: timestamp,
-      exercises: routineExercises,
+      exercises: parsedExercises.exercises,
     };
     routines.push(routine);
     return HttpResponse.json(routine, { status: 201 });
+  }),
+
+  http.patch("*/api/v1/routines/:id", async ({ request, params }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    const routine = routines.find(
+      (item) => item.id === params.id && item.userId === user.id,
+    );
+    if (!routine) return jsonError("La rutina no existe.", 404);
+
+    const body: unknown = await request.json();
+    if (!isRecord(body)) {
+      return jsonError("Indica los cambios de la rutina.", 400);
+    }
+    if (
+      body.name !== undefined &&
+      (typeof body.name !== "string" ||
+        !body.name.trim() ||
+        body.name.trim().length > 100)
+    ) {
+      return jsonError("El nombre de la rutina no es válido.", 400);
+    }
+    if (body.name === undefined && body.exercises === undefined) {
+      return jsonError("Indica al menos un campo para actualizar.", 400);
+    }
+
+    let updatedExercises = routine.exercises;
+    if (body.exercises !== undefined) {
+      const parsedExercises = parseRoutineExercises(body.exercises);
+      if ("error" in parsedExercises) {
+        return jsonError(parsedExercises.error, 400);
+      }
+      updatedExercises = parsedExercises.exercises;
+    }
+
+    const updatedRoutine: MockRoutine = {
+      ...routine,
+      ...(typeof body.name === "string" && { name: body.name.trim() }),
+      exercises: updatedExercises,
+      updatedAt: new Date().toISOString(),
+    };
+    routines[routines.indexOf(routine)] = updatedRoutine;
+    return HttpResponse.json(updatedRoutine);
+  }),
+
+  http.delete("*/api/v1/routines/:id", ({ request, params }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    const routineIndex = routines.findIndex(
+      (routine) => routine.id === params.id && routine.userId === user.id,
+    );
+    if (routineIndex === -1) return jsonError("La rutina no existe.", 404);
+
+    routines.splice(routineIndex, 1);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];

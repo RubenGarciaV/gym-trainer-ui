@@ -8,7 +8,6 @@ const Login = () => {
     setUserData,
     handleSubmit,
     isLoading,
-    error,
   } = useAuth();
   const isSignUp = mode === "sign-up";
 
@@ -83,12 +82,6 @@ const Login = () => {
               value={userData.password}
             />
           </div>
-
-          {error && (
-            <p className="text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          )}
 
           <button
             className="w-full rounded-md bg-sky-600 px-4 py-2 font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"

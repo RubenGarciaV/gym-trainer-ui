@@ -13,6 +13,7 @@ import {
 import { Plus, X } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
 import type { WeightEntry, Workout } from "../../api/types";
+import { useToast } from "../../components/toast-provider";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
@@ -20,15 +21,13 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
 });
 
 const Home = () => {
+  const showToast = useToast();
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
   const [isWeightFormOpen, setIsWeightFormOpen] = useState(false);
   const [weightInput, setWeightInput] = useState("");
   const [isSavingWeight, setIsSavingWeight] = useState(false);
-  const [weightError, setWeightError] = useState("");
-  const [weightSuccess, setWeightSuccess] = useState("");
   const weightDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -45,7 +44,8 @@ const Home = () => {
       })
       .catch((requestError: unknown) => {
         if (!active) return;
-        setError(
+        showToast(
+          "error",
           requestError instanceof Error
             ? requestError.message
             : "No se pudieron cargar los datos.",
@@ -58,7 +58,7 @@ const Home = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     const dialog = weightDialogRef.current;
@@ -81,8 +81,6 @@ const Home = () => {
 
   const handleAddWeight = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setWeightError("");
-    setWeightSuccess("");
     setIsSavingWeight(true);
 
     const measuredAt = new Date();
@@ -105,9 +103,10 @@ const Home = () => {
       );
       setWeightInput("");
       setIsWeightFormOpen(false);
-      setWeightSuccess("Peso registrado para hoy.");
+      showToast("success", "Peso registrado para hoy.");
     } catch (requestError) {
-      setWeightError(
+      showToast(
+        "error",
         requestError instanceof Error
           ? requestError.message
           : "No se pudo registrar el peso.",
@@ -142,15 +141,9 @@ const Home = () => {
 
   return (
     <section className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-800">Resumen</h1>
+    <h1 className="text-2xl font-bold text-slate-800">Resumen</h1>
 
-      {error && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-
-      {isLoading ? (
+    {isLoading ? (
         <p className="text-sm text-slate-500">Cargando tus estadísticas...</p>
       ) : (
         <>
@@ -161,8 +154,6 @@ const Home = () => {
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700"
                 onClick={() => {
                   setIsWeightFormOpen(true);
-                  setWeightError("");
-                  setWeightSuccess("");
                 }}
                 type="button"
               >
@@ -171,11 +162,6 @@ const Home = () => {
               </button>
             </header>
 
-            {weightSuccess && (
-              <p className="mb-3 text-sm text-emerald-700" role="status">
-                {weightSuccess}
-              </p>
-            )}
             {weightHistory.length ? (
               <div className="history-chart h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -268,11 +254,6 @@ const Home = () => {
                   value={weightInput}
                 />
               </label>
-              {weightError && (
-                <p className="text-sm text-red-700" role="alert">
-                  {weightError}
-                </p>
-              )}
               <div className="flex justify-end gap-2">
                 <button
                   className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
