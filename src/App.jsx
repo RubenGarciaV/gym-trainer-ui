@@ -3,9 +3,14 @@ import './App.css'
 import { lazy } from 'react';
 import Header from './views/header/header';
 import Footer from './views/footer/footer';
+import { SessionProvider } from './hooks/auth/session-context';
 
 const Login = lazy(() => import('./views/login/login'));
 const Home = lazy(() => import('./views/home/home'));
+const Workouts = lazy(() => import('./views/workouts/workouts'));
+const Training = lazy(() => import('./views/training/training'));
+const Profile = lazy(() => import('./views/profile/profile'));
+const History = lazy(() => import('./views/history/history'));
 
 function AppContent() {
   const { pathname } = useLocation();
@@ -18,6 +23,10 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/home" element={<Home />} />
+          <Route path="/workouts" element={<Workouts />} />
+          <Route path="/training" element={<Training />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<div>Not found</div>} />
         </Routes>
       </main>
@@ -29,7 +38,9 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <SessionProvider>
+        <AppContent />
+      </SessionProvider>
     </BrowserRouter>
   );
 }

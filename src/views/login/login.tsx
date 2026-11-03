@@ -1,37 +1,121 @@
-import { useLogin } from "../../hooks/login/useLogin";
+import { useAuth } from "../../hooks/auth/useAuth";
 
 const Login = () => {
-  const { userData, setUserData, handleLogin, error } = useLogin();
+  const {
+    mode,
+    setMode,
+    userData,
+    setUserData,
+    handleSubmit,
+    isLoading,
+    error,
+  } = useAuth();
+  const isSignUp = mode === "sign-up";
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md border-2 border-sky-800 rounded-lg p-4 text-sky-800 shadow-lg shadow-sky-800">
-        <div className="mb-4">
-          <label className="mb-2.5 text-lg font-medium text-heading">Username</label>
-          <input
-            autoComplete="off"
-            className="w-full text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300 shadow-sm focus:shadow"
-            onChange={(e) => setUserData({ ...userData, username: e.target.value })}
-          />
-        </div>
-        <div className="mb-4">
-          <label className="mb-2.5 text-lg font-medium text-heading">Password</label>
-          <input
-            type="password"
-            className="w-full text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300 shadow-sm focus:shadow"
-            onChange={(e) => setUserData({ ...userData, password: e.target.value })}
-          />
-        </div>
-        {error && (
-          <div className="mb-2.5 text-sm text-red-600">
-            Credentials are not valid.
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 text-slate-800 shadow-lg">
+        <h1 className="mb-1 text-2xl font-bold text-sky-800">
+          {isSignUp ? "Crear cuenta" : "Iniciar sesión"}
+        </h1>
+        <p className="mb-6 text-sm text-slate-500">
+          {isSignUp
+            ? "Regístrate para empezar a seguir tus entrenamientos."
+            : "Accede a tu cuenta de Gym Trainer."}
+        </p>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {isSignUp && (
+            <div>
+              <label className="mb-1 block text-sm font-medium" htmlFor="name">
+                Nombre
+              </label>
+              <input
+                autoComplete="name"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                id="name"
+                name="name"
+                onChange={(event) =>
+                  setUserData({ ...userData, name: event.target.value })
+                }
+                required
+                value={userData.name}
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium" htmlFor="email">
+              Correo electrónico
+            </label>
+            <input
+              autoComplete="email"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+              id="email"
+              name="email"
+              onChange={(event) =>
+                setUserData({ ...userData, email: event.target.value })
+              }
+              required
+              type="email"
+              value={userData.email}
+            />
           </div>
-        )}
-        <div className="flex justify-end">
-          <button className="bg-sky-600 hover:bg-sky-800 text-white font-bold py-2 px-4 rounded cursor-pointer" onClick={() => handleLogin()}>
-            Login
+
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium"
+              htmlFor="password"
+            >
+              Contraseña
+            </label>
+            <input
+              autoComplete={isSignUp ? "new-password" : "current-password"}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+              id="password"
+              name="password"
+              onChange={(event) =>
+                setUserData({ ...userData, password: event.target.value })
+              }
+              minLength={isSignUp ? 8 : undefined}
+              required
+              type="password"
+              value={userData.password}
+            />
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            className="w-full rounded-md bg-sky-600 px-4 py-2 font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isLoading}
+            type="submit"
+          >
+            {isLoading
+              ? "Procesando..."
+              : isSignUp
+                ? "Crear cuenta"
+                : "Iniciar sesión"}
           </button>
-        </div>
+        </form>
+
+        <p className="mt-5 text-center text-sm text-slate-600">
+          {isSignUp ? "¿Ya tienes cuenta?" : "¿Todavía no tienes cuenta?"}{" "}
+          <button
+            className="font-semibold text-sky-700 hover:text-sky-800"
+            disabled={isLoading}
+            onClick={() => {
+              setMode(isSignUp ? "sign-in" : "sign-up");
+            }}
+            type="button"
+          >
+            {isSignUp ? "Inicia sesión" : "Regístrate"}
+          </button>
+        </p>
       </div>
     </div>
   );

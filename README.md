@@ -1,24 +1,41 @@
-# React + Vite
+# Gym Trainer UI
+
+React, Vite, Tailwind CSS, and Recharts frontend for Gym Trainer.
+
+The app's Home dashboard charts body-weight entries and completed workout
+durations. Workouts lists the user's training routines, History shows completed
+sessions, Training creates routines from the exercise catalog, and Profile
+updates the account name and password. Email is displayed in Profile but
+cannot be changed because the API does not currently enable email changes.
+
+## Local development
+
+1. Install the dependencies with `npm install`.
+2. Set `VITE_API_URL` in `.env.local` to the Gym Trainer API origin. For local
+   development, use `http://localhost:3001`.
+3. To test without running the API, add `VITE_API_MOCKING=enabled` to
+   `.env.local`. The mock account is `demo@gymtrainer.local` /
+   `password123`. MSW saves the mock session in local browser storage so it
+   survives a page refresh. Mock credentials are for development only; clear
+   the site's local storage to sign out. Mock routines, workouts, and weight
+   entries are held in memory and reset on reload.
+4. Start the frontend with `npm run dev`. Restart Vite after changing
+   `.env.local`.
+
+The login and registration forms use the API's Better Auth email endpoints and
+send requests with `credentials: 'include'` so the session cookie is retained.
+Without MSW enabled, start the API separately and allow the frontend origin in
+its `CORS_ORIGINS`. MSW also mocks the exercise catalog, dashboard data,
+workout history, routine creation, session profile, and profile updates. Mock
+workout, routine, and weight data are in memory. The persisted mock session
+contains development-only credentials in local browser storage. MSW is only
+enabled in Vite development mode.
 
 ## Deploy to Vercel
 
-Import this repository in Vercel and use the Vite framework preset. The project
-uses `npm run build` to generate the production files in `dist`. The `vercel.json`
-rewrite keeps React Router routes working when users open or refresh them directly.
+Import this repository in Vercel with the Vite framework preset and set
+`VITE_API_URL` to the deployed API origin. Set the deployed UI origin in the
+API's `CORS_ORIGINS` environment variable. The `vercel.json` rewrite supports
+direct navigation and refreshes on React Router routes.
 
-You can also deploy from the Vercel CLI with `vercel --prod`.
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Deploy from the Vercel CLI with `vercel --prod`.
