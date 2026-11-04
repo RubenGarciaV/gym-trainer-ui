@@ -546,10 +546,14 @@ const RoutineForm = ({
         </p>
       )}
 
-      <div className={onCancel ? "flex justify-end gap-2" : ""}>
+      <div
+        className={
+          onCancel ? "grid grid-cols-2 gap-3 sm:flex sm:justify-end" : ""
+        }
+      >
         {onCancel && (
           <button
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:min-w-28 sm:px-5"
             onClick={onCancel}
             type="button"
           >
@@ -557,7 +561,7 @@ const RoutineForm = ({
           </button>
         )}
         <button
-          className={`${onCancel ? "" : "w-full"} rounded-md bg-sky-600 px-4 py-3 font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60`}
+          className={`min-h-12 ${onCancel ? "w-full sm:w-auto sm:min-w-40" : "w-full"} rounded-xl bg-sky-600 px-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5`}
           disabled={isSaving || isLoadingExercises || exercises.length === 0}
           type="submit"
         >
