@@ -1,5 +1,6 @@
-const apiBaseUrl = (import.meta.env.VITE_API_URL || "http://localhost:3001")
-  .replace(/\/$/, "");
+const apiBaseUrl = import.meta.env.PROD
+  ? ""
+  : (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
 const isMockingAuth =
   import.meta.env.DEV && import.meta.env.VITE_API_MOCKING === "enabled";
 const mockSessionStorageKey = "gym-trainer:mock-session";
