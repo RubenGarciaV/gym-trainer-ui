@@ -35,12 +35,10 @@ enabled in Vite development mode.
 
 Import this repository in Vercel with the Vite framework preset and set
 `VITE_API_URL` to the deployed API origin for Production and Preview. Frontend
-requests in those environments use the same-origin Vercel Function in
-`api/[...path].js`, which
-forwards them to that API. This keeps the session cookie first-party on mobile
-browsers that block third-party cookies. The function also needs
-`VITE_API_URL` available in its runtime environment. Set the deployed UI origin
-in the API's `CORS_ORIGINS` environment variable. The `vercel.json` rewrite
+requests in those environments use the `/api` Vercel rewrite to proxy requests
+through the UI's own domain. This keeps the session cookie first-party on
+mobile browsers that block third-party cookies. Set the deployed UI origin in
+the API's `CORS_ORIGINS` environment variable. The `vercel.json` rewrite also
 supports direct navigation and refreshes on React Router routes.
 
 Deploy from the Vercel CLI with `vercel --prod`.

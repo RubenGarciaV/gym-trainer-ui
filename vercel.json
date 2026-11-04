@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://gym-trainer-api.vercel.app/api/:path*"
+    },
+    {
       "source": "/:path((?!api/).*)",
       "destination": "/"
     }
