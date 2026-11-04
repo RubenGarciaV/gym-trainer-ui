@@ -1,5 +1,13 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
+import { Check, ChevronDown, Plus, Search, Trash2 } from "lucide-react";
 import { apiRequest } from "../../api/client";
 import { useModal } from "../../components/modal-provider";
 import type { ApiExercise, Routine } from "../../api/types";
@@ -60,6 +68,210 @@ const toDrafts = (routine?: Routine): ExerciseDraft[] =>
         })),
       }))
     : [newExerciseDraft(0)];
+
+const normalizeSearchText = (value: string) =>
+  value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("es");
+
+interface ExerciseAutocompleteProps {
+  label: string;
+  exercises: ApiExercise[];
+  selectedId: string;
+  disabled: boolean;
+  onSelect: (exerciseId: string) => void;
+}
+
+const ExerciseAutocomplete = ({
+  label,
+  exercises,
+  selectedId,
+  disabled,
+  onSelect,
+}: ExerciseAutocompleteProps) => {
+  const listboxId = useId();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const selectedExercise = exercises.find(({ id }) => id === selectedId);
+
+  const filteredExercises = useMemo(() => {
+      const searchTerms = normalizeSearchText(query.trim())
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!searchTerms.length) return exercises;
+
+      return exercises.filter(({ name, muscleGroups }) => {
+        const searchableText = normalizeSearchText(
+          `${name} ${muscleGroups.join(" ")}`,
+        );
+        return searchTerms.every((term) => searchableText.includes(term));
+      });
+  }, [exercises, query]);
+
+  useEffect(() => {
+      if (selectedExercise) setQuery(selectedExercise.name);
+  }, [selectedExercise]);
+
+  const selectExercise = (exercise: ApiExercise) => {
+      setQuery(exercise.name);
+      setIsOpen(false);
+      setActiveIndex(0);
+      onSelect(exercise.id);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (!isOpen) {
+          setActiveIndex(0);
+          setIsOpen(true);
+          return;
+        }
+        setIsOpen(true);
+        setActiveIndex((index) =>
+          filteredExercises.length
+            ? index < 0
+              ? 0
+              : (index + 1) % filteredExercises.length
+            : -1,
+        );
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (!isOpen) {
+          setActiveIndex(filteredExercises.length - 1);
+          setIsOpen(true);
+          return;
+        }
+        setIsOpen(true);
+        setActiveIndex((index) =>
+          filteredExercises.length
+            ? index < 0
+              ? filteredExercises.length - 1
+              : (index - 1 + filteredExercises.length) % filteredExercises.length
+            : -1,
+        );
+      } else if (event.key === "Enter" && isOpen && filteredExercises.length) {
+        event.preventDefault();
+        selectExercise(filteredExercises[activeIndex] ?? filteredExercises[0]);
+      } else if (event.key === "Escape" && isOpen) {
+        event.preventDefault();
+        setIsOpen(false);
+      }
+  };
+
+  return (
+      <div
+        className="relative"
+        onBlur={(event) => {
+          if (
+            !(event.relatedTarget instanceof Node) ||
+            !containerRef.current?.contains(event.relatedTarget)
+          ) {
+            setIsOpen(false);
+          }
+        }}
+        ref={containerRef}
+      >
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={18}
+          />
+          <input
+            aria-activedescendant={
+              isOpen && filteredExercises[activeIndex]
+                ? `${listboxId}-option-${filteredExercises[activeIndex].id}`
+                : undefined
+            }
+            aria-autocomplete="list"
+            aria-controls={listboxId}
+            aria-expanded={isOpen}
+            aria-haspopup="listbox"
+            aria-label={label}
+            autoComplete="off"
+            className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-10 text-base focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+            disabled={disabled}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setActiveIndex(-1);
+              setIsOpen(true);
+              if (selectedId) onSelect("");
+            }}
+            onFocus={() => {
+              setIsOpen(true);
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              disabled ? "Cargando ejercicios..." : "Escribe para buscar..."
+            }
+            role="combobox"
+            value={query}
+          />
+          <ChevronDown
+            aria-hidden="true"
+            className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+            size={18}
+          />
+        </div>
+
+        {isOpen && !disabled && (
+          <ul
+            className="absolute inset-x-0 top-full z-20 mt-2 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
+            id={listboxId}
+            role="listbox"
+          >
+            {filteredExercises.length ? (
+              filteredExercises.map((exercise, index) => (
+                <li
+                  aria-selected={exercise.id === selectedId}
+                  className={`flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm ${
+                    index === activeIndex
+                      ? "bg-sky-50 text-sky-900"
+                      : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                  id={`${listboxId}-option-${exercise.id}`}
+                  key={exercise.id}
+                  onClick={() => selectExercise(exercise)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  role="option"
+                >
+                  <span className="min-w-0">
+                    <span className="block font-medium">{exercise.name}</span>
+                    {exercise.muscleGroups.length > 0 && (
+                      <span className="mt-0.5 block text-xs text-slate-500">
+                        {exercise.muscleGroups.join(", ")}
+                      </span>
+                    )}
+                  </span>
+                  {exercise.id === selectedId && (
+                    <Check
+                      aria-hidden="true"
+                      className="shrink-0 text-emerald-600"
+                      size={17}
+                    />
+                  )}
+                </li>
+              ))
+            ) : (
+              <li
+                className="px-3 py-4 text-center text-sm text-slate-500"
+                role="status"
+              >
+                No se encontraron ejercicios.
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+  );
+};
 
 const RoutineForm = ({
   initialRoutine,
@@ -235,31 +447,20 @@ const RoutineForm = ({
             )}
           </div>
 
-          <label className="block space-y-1">
+          <div className="block space-y-1">
             <span className="text-sm font-medium text-slate-700">
               Ejercicio
             </span>
-            <select
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+            <ExerciseAutocomplete
               disabled={isLoadingExercises || exercises.length === 0}
-              onChange={(event) =>
-                updateExercise(draft.key, { exerciseId: event.target.value })
+              exercises={exercises}
+              label={`Buscar ejercicio ${index + 1}`}
+              onSelect={(exerciseId) =>
+                updateExercise(draft.key, { exerciseId })
               }
-              required
-              value={draft.exerciseId}
-            >
-              <option value="">
-                {isLoadingExercises
-                  ? "Cargando ejercicios..."
-                  : "Selecciona un ejercicio"}
-              </option>
-              {exercises.map((exercise) => (
-                <option key={exercise.id} value={exercise.id}>
-                  {exercise.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              selectedId={draft.exerciseId}
+            />
+          </div>
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-700">Series</h3>
