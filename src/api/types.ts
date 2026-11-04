@@ -54,6 +54,12 @@ export interface Routine {
   exercises: RoutineExercise[];
 }
 
+export interface WorkoutSessionProgress {
+  startedAt: string;
+  completedSetIds: string[];
+  restEndsAt: number | null;
+}
+
 export interface AuthUser {
   id: string;
   name: string;

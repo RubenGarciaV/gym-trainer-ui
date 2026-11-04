@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 import { useSession } from "../../hooks/auth/session-context";
 
 const Profile = () => {
-  const showToast = useToast();
+  const { showAlert } = useModal();
   const { user, setUser, refreshSession, isSessionLoading, sessionError } =
     useSession();
   const [name, setName] = useState("");
@@ -20,8 +21,8 @@ const Profile = () => {
   }, [user]);
 
   useEffect(() => {
-    if (sessionError) showToast("error", sessionError);
-  }, [sessionError, showToast]);
+    if (sessionError) showAlert("error", sessionError);
+  }, [sessionError, showAlert]);
 
   const handleUpdateName = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,9 +34,9 @@ const Profile = () => {
       if (!updatedUser) throw new Error("No se pudo actualizar la sesión.");
       setUser(updatedUser);
       setName(updatedUser.name);
-      showToast("success", "Tu nombre se ha actualizado.");
+      showAlert("success", "Tu nombre se ha actualizado.");
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message
@@ -50,11 +51,11 @@ const Profile = () => {
     event.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      showToast("error", "La nueva contraseña y su confirmación no coinciden.");
+      showAlert("error", "La nueva contraseña y su confirmación no coinciden.");
       return;
     }
     if (newPassword.length < 8) {
-      showToast("error", "La nueva contraseña debe tener al menos 8 caracteres.");
+      showAlert("error", "La nueva contraseña debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -71,9 +72,9 @@ const Profile = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      showToast("success", "Tu contraseña se ha actualizado.");
+      showAlert("success", "Tu contraseña se ha actualizado.");
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message
@@ -88,7 +89,7 @@ const Profile = () => {
     try {
       await refreshSession();
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message
@@ -231,19 +232,40 @@ const PasswordField = ({
   value,
   onChange,
   minLength,
-}: PasswordFieldProps) => (
-  <label className="block space-y-1">
-    <span className="text-sm font-medium text-slate-700">{label}</span>
-    <input
-      autoComplete={autoComplete}
-      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
-      minLength={minLength}
-      onChange={(event) => onChange(event.target.value)}
-      required
-      type="password"
-      value={value}
-    />
-  </label>
-);
+}: PasswordFieldProps) => {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  return (
+    <label className="block space-y-1">
+      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <span className="relative block">
+        <input
+          autoComplete={autoComplete}
+          className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+          minLength={minLength}
+          onChange={(event) => onChange(event.target.value)}
+          required
+          type={isPasswordVisible ? "text" : "password"}
+          value={value}
+        />
+        <button
+          aria-label={
+            isPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña"
+          }
+          aria-pressed={isPasswordVisible}
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
+          onClick={() => setIsPasswordVisible((visible) => !visible)}
+          type="button"
+        >
+          {isPasswordVisible ? (
+            <EyeOff aria-hidden="true" size={18} />
+          ) : (
+            <Eye aria-hidden="true" size={18} />
+          )}
+        </button>
+      </span>
+    </label>
+  );
+};
 
 export default Profile;

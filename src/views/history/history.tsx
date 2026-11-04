@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../api/client";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 import type { Workout } from "../../api/types";
 
-const dateFormatter = new Intl.DateTimeFormat("es-ES", {
+const dateTimeFormatter = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "medium",
   timeStyle: "short",
 });
@@ -15,13 +15,14 @@ const formatDuration = (startedAt: string | null, completedAt: string) => {
     (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 60_000,
   );
   if (!Number.isFinite(minutes) || minutes < 0) return "Duración no disponible";
+  if (minutes === 0) return "<1 min";
   if (minutes < 60) return `${minutes} min`;
 
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 };
 
 const History = () => {
-  const showToast = useToast();
+  const { showAlert } = useModal();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -34,7 +35,7 @@ const History = () => {
       })
       .catch((requestError: unknown) => {
         if (!active) return;
-        showToast(
+        showAlert(
           "error",
           requestError instanceof Error
             ? requestError.message
@@ -48,7 +49,7 @@ const History = () => {
     return () => {
       active = false;
     };
-  }, [showToast]);
+  }, [showAlert]);
 
   return (
     <section className="space-y-5 p-4">
@@ -78,7 +79,14 @@ const History = () => {
                     {workout.name}
                   </h2>
                   <p className="text-sm text-slate-500">
-                    {dateFormatter.format(new Date(workout.completedAt))}
+                    Inicio:{" "}
+                    {workout.startedAt
+                      ? dateTimeFormatter.format(new Date(workout.startedAt))
+                      : "No disponible"}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    Fin:{" "}
+                    {dateTimeFormatter.format(new Date(workout.completedAt))}
                   </p>
                 </div>
                 <span className="rounded-full bg-sky-50 px-3 py-1 text-sm font-medium text-sky-800">

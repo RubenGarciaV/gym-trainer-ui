@@ -625,6 +625,62 @@ export const handlers = [
     );
   }),
 
+  http.post("*/api/v1/workouts", async ({ request }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    const body: unknown = await request.json();
+    if (!isRecord(body) || typeof body.routineId !== "string") {
+      return jsonError("Selecciona una rutina guardada.", 400);
+    }
+
+    const routine = routines.find(
+      (item) => item.id === body.routineId && item.userId === user.id,
+    );
+    if (!routine) return jsonError("La rutina no existe.", 404);
+    if (routine.exercises.length === 0) {
+      return jsonError("La rutina debe tener al menos un ejercicio.", 400);
+    }
+
+    const startedAt =
+      typeof body.startedAt === "string" &&
+      Number.isFinite(Date.parse(body.startedAt))
+        ? body.startedAt
+        : new Date().toISOString();
+    const completedAt =
+      typeof body.completedAt === "string" &&
+      Number.isFinite(Date.parse(body.completedAt))
+        ? body.completedAt
+        : new Date().toISOString();
+    if (Date.parse(completedAt) < Date.parse(startedAt)) {
+      return jsonError("La fecha de fin no puede ser anterior al inicio.", 400);
+    }
+
+    const workout: MockWorkout = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      name: routine.name,
+      startedAt,
+      completedAt,
+      notes: null,
+      exercises: routine.exercises.map((exercise) => ({
+        id: crypto.randomUUID(),
+        exerciseId: exercise.exerciseId,
+        exerciseName: exercise.exercise.name,
+        position: exercise.position,
+        restSeconds: exercise.restSeconds,
+        sets: exercise.sets.map((set) => ({
+          id: crypto.randomUUID(),
+          setNumber: set.setNumber,
+          reps: set.reps,
+          weightKg: set.weightKg,
+        })),
+      })),
+    };
+    workouts.push(workout);
+    return HttpResponse.json(workout, { status: 201 });
+  }),
+
   http.get("*/api/v1/routines", ({ request }) => {
     const { user, response } = requireActiveUser(request);
     if (response) return response;
@@ -638,6 +694,18 @@ export const handlers = [
             new Date(a.updatedAt).getTime(),
         ),
     );
+  }),
+
+  http.get("*/api/v1/routines/:id", ({ request, params }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    const routine = routines.find(
+      (item) => item.id === params.id && item.userId === user.id,
+    );
+    return routine
+      ? HttpResponse.json(routine)
+      : jsonError("La rutina no existe.", 404);
   }),
 
   http.post("*/api/v1/routines", async ({ request }) => {

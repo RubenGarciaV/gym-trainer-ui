@@ -1,17 +1,17 @@
 import { apiRequest, jsonRequest } from "../../api/client";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 import type { Routine } from "../../api/types";
 import RoutineForm, { type RoutineInput } from "./routine-form";
 
 const Training = () => {
-  const showToast = useToast();
+  const { showAlert } = useModal();
 
   const createRoutine = async (input: RoutineInput) => {
     const routine = await apiRequest<Routine>(
       "/api/v1/routines",
       jsonRequest("POST", input),
     );
-    showToast("success", `La rutina «${routine.name}» se ha creado correctamente.`);
+    showAlert("success", `La rutina «${routine.name}» se ha creado correctamente.`);
   };
 
   return (

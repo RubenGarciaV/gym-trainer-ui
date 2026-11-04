@@ -10,12 +10,12 @@ import { lazy, useEffect } from 'react';
 import Header from './views/header/header';
 import Footer from './views/footer/footer';
 import { SessionProvider, useSession } from './hooks/auth/session-context';
-import { ToastProvider } from './components/toast-provider';
-import { useToast } from './components/toast-provider';
+import { ModalProvider, useModal } from './components/modal-provider';
 
 const Login = lazy(() => import('./views/login/login'));
 const Home = lazy(() => import('./views/home/home'));
 const Workouts = lazy(() => import('./views/workouts/workouts'));
+const WorkoutSession = lazy(() => import('./views/workouts/workout-session'));
 const Training = lazy(() => import('./views/training/training'));
 const Profile = lazy(() => import('./views/profile/profile'));
 const History = lazy(() => import('./views/history/history'));
@@ -24,12 +24,12 @@ function AppContent() {
   const location = useLocation();
   const { pathname } = location;
   const { user, isSessionLoading, sessionError } = useSession();
-  const showToast = useToast();
+  const { showAlert } = useModal();
   const showNavigation = pathname !== '/';
 
   useEffect(() => {
-    if (sessionError) showToast('error', sessionError);
-  }, [sessionError, showToast]);
+    if (sessionError) showAlert('error', sessionError);
+  }, [sessionError, showAlert]);
 
   if (showNavigation && isSessionLoading) {
     return (
@@ -50,6 +50,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/home" element={<Home />} />
+          <Route path="/workouts/:routineId/start" element={<WorkoutSession />} />
           <Route path="/workouts" element={<Workouts />} />
           <Route path="/training" element={<Training />} />
           <Route path="/history" element={<History />} />
@@ -65,11 +66,11 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
+      <ModalProvider>
         <SessionProvider>
           <AppContent />
         </SessionProvider>
-      </ToastProvider>
+      </ModalProvider>
     </BrowserRouter>
   );
 }

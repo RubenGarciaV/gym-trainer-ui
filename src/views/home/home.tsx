@@ -13,7 +13,7 @@ import {
 import { Plus, X } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
 import type { WeightEntry, Workout } from "../../api/types";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
@@ -21,7 +21,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
 });
 
 const Home = () => {
-  const showToast = useToast();
+  const { showAlert } = useModal();
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +44,7 @@ const Home = () => {
       })
       .catch((requestError: unknown) => {
         if (!active) return;
-        showToast(
+        showAlert(
           "error",
           requestError instanceof Error
             ? requestError.message
@@ -58,7 +58,7 @@ const Home = () => {
     return () => {
       active = false;
     };
-  }, [showToast]);
+  }, [showAlert]);
 
   useEffect(() => {
     const dialog = weightDialogRef.current;
@@ -103,9 +103,9 @@ const Home = () => {
       );
       setWeightInput("");
       setIsWeightFormOpen(false);
-      showToast("success", "Peso registrado para hoy.");
+      showAlert("success", "Peso registrado para hoy.");
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message

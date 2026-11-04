@@ -1,3 +1,5 @@
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "../../hooks/auth/useAuth";
 
 const Login = () => {
@@ -10,6 +12,7 @@ const Login = () => {
     isLoading,
   } = useAuth();
   const isSignUp = mode === "sign-up";
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
@@ -68,19 +71,36 @@ const Login = () => {
             >
               Contraseña
             </label>
-            <input
-              autoComplete={isSignUp ? "new-password" : "current-password"}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
-              id="password"
-              name="password"
-              onChange={(event) =>
-                setUserData({ ...userData, password: event.target.value })
-              }
-              minLength={isSignUp ? 8 : undefined}
-              required
-              type="password"
-              value={userData.password}
-            />
+            <div className="relative">
+              <input
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                id="password"
+                name="password"
+                onChange={(event) =>
+                  setUserData({ ...userData, password: event.target.value })
+                }
+                minLength={isSignUp ? 8 : undefined}
+                required
+                type={isPasswordVisible ? "text" : "password"}
+                value={userData.password}
+              />
+              <button
+                aria-label={
+                  isPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
+                aria-pressed={isPasswordVisible}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
+                onClick={() => setIsPasswordVisible((visible) => !visible)}
+                type="button"
+              >
+                {isPasswordVisible ? (
+                  <EyeOff aria-hidden="true" size={18} />
+                ) : (
+                  <Eye aria-hidden="true" size={18} />
+                )}
+              </button>
+            </div>
           </div>
 
           <button

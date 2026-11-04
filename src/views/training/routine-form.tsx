@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { apiRequest } from "../../api/client";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 import type { ApiExercise, Routine } from "../../api/types";
 
 export interface RoutineExerciseInput {
@@ -67,7 +67,7 @@ const RoutineForm = ({
   onSubmit,
   onCancel,
 }: RoutineFormProps) => {
-  const showToast = useToast();
+  const { showAlert } = useModal();
   const [exercises, setExercises] = useState<ApiExercise[]>([]);
   const [name, setName] = useState(initialRoutine?.name ?? "");
   const [drafts, setDrafts] = useState(() => toDrafts(initialRoutine));
@@ -86,7 +86,7 @@ const RoutineForm = ({
       .catch((requestError: unknown) => {
         if (!active) return;
         setExerciseLoadFailed(true);
-        showToast(
+        showAlert(
           "error",
           requestError instanceof Error
             ? requestError.message
@@ -100,7 +100,7 @@ const RoutineForm = ({
     return () => {
       active = false;
     };
-  }, [showToast]);
+  }, [showAlert]);
 
   const updateExercise = (
     key: number,
@@ -164,7 +164,7 @@ const RoutineForm = ({
     event.preventDefault();
 
     if (drafts.some((draft) => !draft.exerciseId)) {
-      showToast("error", "Selecciona un ejercicio en cada apartado.");
+      showAlert("error", "Selecciona un ejercicio en cada apartado.");
       return;
     }
 
@@ -184,7 +184,7 @@ const RoutineForm = ({
         })),
       });
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message

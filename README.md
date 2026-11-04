@@ -3,10 +3,12 @@
 React, Vite, Tailwind CSS, and Recharts frontend for Gym Trainer.
 
 The app's Home dashboard charts body-weight entries and completed workout
-durations. Workouts lists the user's training routines, History shows completed
-sessions, Training creates routines from the exercise catalog, and Profile
-updates the account name and password. Email is displayed in Profile but
-cannot be changed because the API does not currently enable email changes.
+durations. Workouts lists the user's training routines and starts guided
+sessions with per-set checkboxes and rest timers. Completed sessions are saved
+to History with their start and completion times. Training creates routines
+from the exercise catalog, and Profile updates the account name and password.
+Email is displayed in Profile but cannot be changed because the API does not
+currently enable email changes.
 
 ## Local development
 

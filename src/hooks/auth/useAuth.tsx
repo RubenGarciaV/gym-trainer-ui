@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest, jsonRequest } from "../../api/client";
 import type { AuthUser } from "../../api/types";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 import { useSession } from "./session-context";
 
 interface UserData {
@@ -24,7 +24,7 @@ interface UseAuth {
 
 export const useAuth = (): UseAuth => {
   const navigate = useNavigate();
-  const showToast = useToast();
+  const { showAlert } = useModal();
   const { setUser } = useSession();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [userData, setUserData] = useState<UserData>({
@@ -53,13 +53,13 @@ export const useAuth = (): UseAuth => {
       );
 
       setUser(result.user);
-      showToast(
+      showAlert(
         "success",
         mode === "sign-up" ? "Tu cuenta se ha creado." : "Sesión iniciada.",
       );
       navigate("/home");
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message

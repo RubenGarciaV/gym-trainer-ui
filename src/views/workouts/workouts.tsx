@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Pencil, Play, Trash2, X } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 import type { Routine } from "../../api/types";
 import RoutineForm, { type RoutineInput } from "../training/routine-form";
+import { useNavigate } from "react-router-dom";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "medium",
 });
 
 const Workouts = () => {
-  const showToast = useToast();
+  const navigate = useNavigate();
+  const { showAlert, confirmAction } = useModal();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
@@ -37,7 +39,7 @@ const Workouts = () => {
       })
       .catch((requestError: unknown) => {
         if (!active) return;
-        showToast(
+        showAlert(
           "error",
           requestError instanceof Error
             ? requestError.message
@@ -51,7 +53,7 @@ const Workouts = () => {
     return () => {
       active = false;
     };
-  }, [showToast]);
+  }, [showAlert]);
 
   const updateRoutine = async (input: RoutineInput) => {
     if (!editingRoutine) return;
@@ -66,11 +68,14 @@ const Workouts = () => {
       ),
     );
     setEditingRoutine(null);
-    showToast("success", `La rutina «${updatedRoutine.name}» se ha actualizado.`);
+    showAlert("success", `La rutina «${updatedRoutine.name}» se ha actualizado.`);
   };
 
   const deleteRoutine = async (routine: Routine) => {
-    if (!window.confirm(`¿Seguro que quieres borrar la rutina «${routine.name}»?`)) {
+    if (!(await confirmAction(
+      `¿Seguro que quieres borrar la rutina «${routine.name}»?`,
+      "Borrar rutina",
+    ))) {
       return;
     }
 
@@ -83,9 +88,9 @@ const Workouts = () => {
       setRoutines((current) =>
         current.filter((item) => item.id !== routine.id),
       );
-      showToast("success", `La rutina «${routine.name}» se ha borrado.`);
+      showAlert("success", `La rutina «${routine.name}» se ha borrado.`);
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message
@@ -123,10 +128,20 @@ const Workouts = () => {
                   {routine.name}
                 </h2>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">
-                    Actualizada el{" "}
-                    {dateFormatter.format(new Date(routine.updatedAt))}
-                  </span>
+                  <button
+                    aria-label={`Iniciar entrenamiento ${routine.name}`}
+                    className="rounded-md p-2 text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={routine.exercises.length === 0}
+                    onClick={() => {
+                      const startedAt = new Date().toISOString();
+                      navigate(
+                        `/workouts/${encodeURIComponent(routine.id)}/start?startedAt=${encodeURIComponent(startedAt)}`,
+                      );
+                    }}
+                    type="button"
+                  >
+                    <Play aria-hidden="true" size={17} />
+                  </button>
                   <button
                     aria-label={`Editar rutina ${routine.name}`}
                     className="rounded-md p-2 text-sky-700 hover:bg-sky-50"
@@ -172,9 +187,6 @@ const Workouts = () => {
                           <li>{exercise.restSeconds} s de descanso</li>
                         </ul>
                       </div>
-                      <span className="text-xs text-slate-400">
-                        {exercise.exercise.muscleGroups.join(" · ")}
-                      </span>
                     </li>
                   ))}
                 </ul>

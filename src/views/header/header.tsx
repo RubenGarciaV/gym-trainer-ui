@@ -2,12 +2,12 @@ import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../api/client";
-import { useToast } from "../../components/toast-provider";
+import { useModal } from "../../components/modal-provider";
 import { useSession } from "../../hooks/auth/session-context";
 
 const Header = () => {
   const navigate = useNavigate();
-  const showToast = useToast();
+  const { showAlert } = useModal();
   const { user, setUser, isSessionLoading } = useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -17,10 +17,10 @@ const Header = () => {
     try {
       await apiRequest<unknown>("/api/auth/sign-out", { method: "POST" });
       setUser(null);
-      showToast("success", "Has cerrado sesión.");
+      showAlert("success", "Has cerrado sesión.");
       navigate("/", { replace: true });
     } catch (requestError) {
-      showToast(
+      showAlert(
         "error",
         requestError instanceof Error
           ? requestError.message
