@@ -99,18 +99,21 @@ const Profile = () => {
   };
 
   return (
-    <section className="mx-auto max-w-2xl space-y-5 p-4">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Mi perfil</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Gestiona tus datos y la contraseña de tu cuenta.
+    <section className="page-shell mx-auto max-w-2xl space-y-5">
+      <div className="page-heading">
+        <p className="page-eyebrow">Tu cuenta</p>
+        <h1 className="page-title">Mi perfil</h1>
+        <p className="page-description">
+          Gestiona tus datos personales y mantén tu cuenta segura.
         </p>
       </div>
 
       {isSessionLoading ? (
-        <p className="text-sm text-slate-500">Cargando perfil...</p>
+        <p className="surface-card p-5 text-sm text-slate-500" role="status">
+          Cargando perfil...
+        </p>
       ) : !user ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+        <div className="surface-card p-5 text-sm text-slate-600">
           {sessionError ? (
             <button
               className="font-semibold text-sky-700"
@@ -131,10 +134,10 @@ const Profile = () => {
       ) : (
         <>
           <form
-            className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="surface-card space-y-4 p-4 sm:p-5"
             onSubmit={handleUpdateName}
           >
-            <h2 className="text-lg font-semibold text-slate-800">
+            <h2 className="text-base font-bold text-slate-800 sm:text-lg">
               Datos personales
             </h2>
             <label className="block space-y-1">
@@ -164,7 +167,7 @@ const Profile = () => {
               </span>
             </label>
             <button
-              className="rounded-md bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-11 w-full rounded-xl bg-sky-700 px-4 py-2.5 font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               disabled={isSavingName || name.trim() === user.name}
               type="submit"
             >
@@ -173,10 +176,10 @@ const Profile = () => {
           </form>
 
           <form
-            className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="surface-card space-y-4 p-4 sm:p-5"
             onSubmit={handleChangePassword}
           >
-            <h2 className="text-lg font-semibold text-slate-800">
+            <h2 className="text-base font-bold text-slate-800 sm:text-lg">
               Cambiar contraseña
             </h2>
             <PasswordField
@@ -200,7 +203,7 @@ const Profile = () => {
               value={confirmPassword}
             />
             <button
-              className="rounded-md bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-11 w-full rounded-xl bg-sky-700 px-4 py-2.5 font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               disabled={
                 isSavingPassword ||
                 !currentPassword ||

@@ -202,7 +202,7 @@ const RoutineForm = ({
           Nombre de la rutina
         </span>
         <input
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+          className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-base focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
           maxLength={100}
           onChange={(event) => setName(event.target.value)}
           required
@@ -212,7 +212,7 @@ const RoutineForm = ({
 
       {drafts.map((draft, index) => (
         <fieldset
-          className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+          className="surface-card space-y-4 p-4 sm:p-5"
           key={draft.key}
         >
           <div className="flex items-center justify-between">
@@ -240,7 +240,7 @@ const RoutineForm = ({
               Ejercicio
             </span>
             <select
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
               disabled={isLoadingExercises || exercises.length === 0}
               onChange={(event) =>
                 updateExercise(draft.key, { exerciseId: event.target.value })

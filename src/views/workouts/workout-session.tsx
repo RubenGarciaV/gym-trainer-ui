@@ -205,7 +205,7 @@ const WorkoutSession = () => {
 
   if (!routine || loadError) {
     return (
-      <section className="mx-auto max-w-3xl space-y-4 p-4">
+      <section className="page-shell mx-auto max-w-3xl space-y-4">
         <p className="text-sm text-slate-600">
           {loadError || "No se pudo cargar la rutina."}
         </p>
@@ -227,8 +227,8 @@ const WorkoutSession = () => {
 
   if (totalSets === 0) {
     return (
-      <section className="mx-auto max-w-3xl space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-800">{routine.name}</h1>
+      <section className="page-shell mx-auto max-w-3xl space-y-4">
+        <h1 className="page-title">{routine.name}</h1>
         <p className="text-sm text-slate-600">
           Esta rutina todavía no tiene ejercicios para completar.
         </p>
@@ -245,23 +245,24 @@ const WorkoutSession = () => {
   }
 
   return (
-    <section className="mx-auto max-w-3xl space-y-5 p-4">
+    <section className="page-shell mx-auto max-w-3xl space-y-5">
       <header className="flex items-start justify-between gap-3">
         <div>
           <button
-            className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-sky-700 hover:text-sky-900"
+            className="mb-3 inline-flex min-h-10 items-center gap-1 rounded-lg pr-2 text-sm font-semibold text-sky-700 hover:text-sky-900"
             onClick={() => void leaveWorkout()}
             type="button"
           >
             <ArrowLeft aria-hidden="true" size={17} />
             Salir
           </button>
-          <h1 className="text-2xl font-bold text-slate-800">{routine.name}</h1>
+          <p className="page-eyebrow">Entrenamiento en curso</p>
+          <h1 className="page-title">{routine.name}</h1>
           <p className="mt-1 text-sm text-slate-500">
             Iniciado el {dateTimeFormatter.format(sessionStartedAt!)}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-sky-50 px-3 py-1 text-sm font-medium text-sky-800">
+        <span className="mt-7 shrink-0 rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-800 sm:text-sm">
           {progress} / {totalSets} series
         </span>
       </header>
@@ -269,7 +270,7 @@ const WorkoutSession = () => {
       {restRemaining > 0 && (
         <div
           aria-live="polite"
-          className="flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950"
+          className="surface-card flex items-center justify-between gap-3 border-amber-200 bg-amber-50 p-4 text-amber-950"
           role="status"
         >
           <div className="flex items-center gap-3">
@@ -279,13 +280,13 @@ const WorkoutSession = () => {
               <p className="text-sm">Prepara la siguiente serie.</p>
             </div>
           </div>
-          <span className="min-w-16 text-right text-2xl font-bold tabular-nums">
+          <span className="min-w-14 text-right text-2xl font-bold tabular-nums sm:min-w-16">
             {Math.floor(restRemaining / 60)}:
             {String(restRemaining % 60).padStart(2, "0")}
           </span>
           <button
             aria-label="Saltar descanso"
-            className="rounded-md p-2 text-amber-800 hover:bg-amber-100"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-amber-800 hover:bg-amber-100"
             onClick={() => setRestEndsAt(null)}
             type="button"
           >
@@ -297,11 +298,11 @@ const WorkoutSession = () => {
       <div className="space-y-4">
         {routine.exercises.map((exercise) => (
           <article
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="surface-card p-4 sm:p-5"
             key={exercise.id}
           >
             <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+              <h2 className="flex min-w-0 items-center gap-2 break-words font-bold text-slate-800">
                 <Dumbbell
                   aria-hidden="true"
                   className="text-sky-700"
@@ -320,14 +321,16 @@ const WorkoutSession = () => {
 
                 return (
                   <li
-                    className="flex items-center justify-between gap-3 py-3"
+                    className={`flex items-center justify-between gap-3 rounded-xl px-2 py-3 transition ${
+                      isChecked ? "bg-emerald-50/70" : ""
+                    }`}
                     key={set.id}
                   >
                     <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
                       <input
                         aria-label={`Marcar serie ${set.setNumber} de ${exercise.exercise.name} como completada`}
                         checked={isChecked}
-                        className="size-5 shrink-0 accent-sky-600"
+                        className="size-6 shrink-0 accent-sky-700"
                         disabled={isDisabled}
                         onChange={() => {
                           const item = sessionSets.find(
@@ -365,7 +368,7 @@ const WorkoutSession = () => {
 
       {isComplete && (
         <button
-          className="w-full rounded-md bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-12 w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isSaving}
           onClick={() => void completeWorkout()}
           type="button"

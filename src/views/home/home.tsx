@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Plus, X } from "lucide-react";
+import { Activity, Plus, Scale, X } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
 import type { WeightEntry, Workout } from "../../api/types";
 import { useModal } from "../../components/modal-provider";
@@ -138,32 +138,91 @@ const Home = () => {
     .filter(({ duration }) => duration >= 0)
     .sort((a, b) => a.completedAt - b.completedAt)
     .slice(-7);
+  const latestWeight = weightEntries.reduce<WeightEntry | null>(
+    (latest, entry) =>
+      !latest || new Date(entry.measuredAt) > new Date(latest.measuredAt)
+        ? entry
+        : latest,
+    null,
+  );
 
   return (
-    <section className="space-y-6 p-4">
-    <h1 className="text-2xl font-bold text-slate-800">Resumen</h1>
+    <section className="page-shell space-y-5 sm:space-y-6">
+      <div className="page-heading">
+        <p className="page-eyebrow">Tu progreso</p>
+        <h1 className="page-title">Resumen</h1>
+        <p className="page-description">
+          Una mirada rápida a tu actividad y evolución.
+        </p>
+      </div>
 
     {isLoading ? (
-        <p className="text-sm text-slate-500">Cargando tus estadísticas...</p>
+        <p className="surface-card p-5 text-sm text-slate-500" role="status">
+          Cargando tus estadísticas...
+        </p>
       ) : (
         <>
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <header className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-bold">Evolución del peso</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <article className="surface-card p-4">
+              <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
+                <Activity aria-hidden="true" size={18} />
+              </div>
+              <p className="text-2xl font-bold tracking-tight text-slate-800">
+                {workouts.length}
+              </p>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Entrenamientos
+              </p>
+            </article>
+            <article className="surface-card p-4">
+              <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                <Scale aria-hidden="true" size={18} />
+              </div>
+              <p className="text-2xl font-bold tracking-tight text-slate-800">
+                {latestWeight ? `${latestWeight.weightKg} kg` : "—"}
+              </p>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Último peso
+              </p>
+            </article>
+            <article className="surface-card col-span-2 p-4 sm:col-span-1">
+              <p className="text-sm font-semibold text-slate-800">
+                {workoutDurationHistory.length
+                  ? "Buen trabajo, sigue así"
+                  : "Tu próximo entrenamiento empieza aquí"}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                {workoutDurationHistory.length
+                  ? "La constancia convierte el esfuerzo en progreso."
+                  : "Completa una rutina para empezar a ver tus estadísticas."}
+              </p>
+            </article>
+          </div>
+
+          <article className="surface-card p-4 sm:p-5">
+            <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-800 sm:text-lg">
+                  Evolución del peso
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Sigue tus mediciones a lo largo del tiempo.
+                </p>
+              </div>
               <button
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-sky-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-800"
                 onClick={() => {
                   setIsWeightFormOpen(true);
                 }}
                 type="button"
               >
-                <Plus aria-hidden="true" size={16} />
+                <Plus aria-hidden="true" size={17} />
                 Añadir peso
               </button>
             </header>
 
             {weightHistory.length ? (
-              <div className="history-chart h-72 w-full">
+              <div className="history-chart chart-container">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={weightHistory}
@@ -199,7 +258,7 @@ const Home = () => {
           <dialog
             aria-labelledby="weight-dialog-title"
             aria-describedby="weight-dialog-description"
-            className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white p-0 text-slate-800 shadow-xl backdrop:bg-slate-950/50"
+            className="mobile-sheet m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white p-0 text-slate-800 shadow-xl"
             onCancel={(event) => {
               event.preventDefault();
               setIsWeightFormOpen(false);
@@ -273,12 +332,15 @@ const Home = () => {
             </form>
           </dialog>
 
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-4 text-lg font-bold">
-              Duración de los últimos 7 entrenamientos
+          <article className="surface-card p-4 sm:p-5">
+            <h2 className="text-base font-bold text-slate-800 sm:text-lg">
+              Duración de tus entrenamientos
             </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Tiempo de tus últimas 7 sesiones completadas.
+            </p>
             {workoutDurationHistory.length ? (
-              <div className="history-chart h-72 w-full">
+              <div className="history-chart chart-container mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={workoutDurationHistory}

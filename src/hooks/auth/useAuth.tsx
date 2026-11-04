@@ -53,10 +53,7 @@ export const useAuth = (): UseAuth => {
       );
 
       setUser(result.user);
-      showAlert(
-        "success",
-        mode === "sign-up" ? "Tu cuenta se ha creado." : "Sesión iniciada.",
-      );
+      if (mode === "sign-up") showAlert("success", "Tu cuenta se ha creado.");
       navigate("/home");
     } catch (requestError) {
       showAlert(

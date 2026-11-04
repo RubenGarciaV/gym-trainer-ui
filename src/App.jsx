@@ -44,9 +44,11 @@ function AppContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="app-frame flex flex-col">
       {showNavigation && <Header />}
-      <main className={`flex-1 ${showNavigation ? 'pb-18' : ''}`}>
+      <main
+        className={`app-main flex-1 ${showNavigation ? 'mobile-nav-space' : 'min-h-screen'}`}
+      >
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/home" element={<Home />} />

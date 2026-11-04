@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Activity, Clock3, Dumbbell, House, LogOut, Plus, UserRound } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../api/client";
 import { useModal } from "../../components/modal-provider";
 import { useSession } from "../../hooks/auth/session-context";
+
+const sections = [
+  { Icon: House, label: "Inicio", path: "/home" },
+  { Icon: Dumbbell, label: "Rutinas", path: "/workouts" },
+  { Icon: Plus, label: "Crear", path: "/training" },
+  { Icon: Clock3, label: "Historial", path: "/history" },
+  { Icon: UserRound, label: "Perfil", path: "/profile" },
+];
 
 const Header = () => {
   const navigate = useNavigate();
@@ -32,22 +40,48 @@ const Header = () => {
   };
 
   return (
-    <header className="mb-2 flex items-center justify-between gap-3 border-b border-sky-500 px-4 py-3 text-sky-700">
-      <h1 className="text-md font-bold">
-        {isSessionLoading ? "Gym Trainer" : user?.name || "Gym Trainer"}
-      </h1>
-      {!isSessionLoading && user && (
-        <button
-          aria-label="Cerrar sesión"
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isSigningOut}
-          onClick={handleSignOut}
-          type="button"
-        >
-          <LogOut aria-hidden="true" size={18} />
-          <span>{isSigningOut ? "Cerrando..." : "Cerrar sesión"}</span>
-        </button>
-      )}
+    <header className="topbar">
+      <div className="topbar-inner">
+        <div className="brand-lockup">
+          <span aria-hidden="true" className="brand-mark">
+            <Activity size={21} strokeWidth={2.5} />
+          </span>
+          <div className="min-w-0">
+            <p className="brand-name">GYM TRAINER</p>
+            <p className="brand-caption">
+              {isSessionLoading ? "Tu espacio de entrenamiento" : `Hola, ${user?.name || "bienvenido"}`}
+            </p>
+          </div>
+        </div>
+
+        <nav aria-label="Navegación principal" className="desktop-nav">
+          {sections.map(({ Icon, label, path }) => (
+            <NavLink
+              className="desktop-nav-link"
+              key={path}
+              to={path}
+            >
+              <Icon aria-hidden="true" size={17} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        {!isSessionLoading && user && (
+          <button
+            aria-label="Cerrar sesión"
+            className="logout-button disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSigningOut}
+            onClick={handleSignOut}
+            type="button"
+          >
+            <LogOut aria-hidden="true" size={17} />
+            <span className="logout-label">
+              {isSigningOut ? "Cerrando..." : "Salir"}
+            </span>
+          </button>
+        )}
+      </div>
     </header>
   );
 }
