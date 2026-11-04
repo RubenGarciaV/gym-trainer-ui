@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { ClipboardList, Pencil, Play, Plus, Trash2, X } from "lucide-react";
+import {
+  ClipboardList,
+  Pencil,
+  Play,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
 import { useModal } from "../../components/modal-provider";
 import type { Routine } from "../../api/types";
@@ -10,10 +18,17 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "medium",
 });
 
+const normalizeSearchText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es");
+
 const Workouts = () => {
   const navigate = useNavigate();
   const { showAlert, confirmAction } = useModal();
   const [routines, setRoutines] = useState<Routine[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [deletingRoutineId, setDeletingRoutineId] = useState<string | null>(null);
@@ -101,6 +116,21 @@ const Workouts = () => {
     }
   };
 
+  const searchTerms = normalizeSearchText(searchQuery.trim())
+    .split(/\s+/)
+    .filter(Boolean);
+  const filteredRoutines = searchTerms.length
+    ? routines.filter((routine) => {
+        const searchableText = normalizeSearchText(
+          [
+            routine.name,
+            ...routine.exercises.map((exercise) => exercise.exercise.name),
+          ].join(" "),
+        );
+        return searchTerms.every((term) => searchableText.includes(term));
+      })
+    : routines;
+
   return (
     <section className="page-shell space-y-5">
       <div className="page-heading flex flex-wrap items-end justify-between gap-4">
@@ -142,8 +172,45 @@ const Workouts = () => {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {routines.map((routine) => (
+        <>
+          <div className="surface-card flex items-center gap-3 px-3 py-2 sm:px-4">
+            <Search
+              aria-hidden="true"
+              className="shrink-0 text-slate-400"
+              size={19}
+            />
+            <input
+              aria-label="Buscar rutinas"
+              className="min-w-0 flex-1 border-0 bg-transparent py-2 text-base text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Buscar por rutina o ejercicio..."
+              type="search"
+              value={searchQuery}
+            />
+            {searchQuery && (
+              <button
+                aria-label="Limpiar búsqueda"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                onClick={() => setSearchQuery("")}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} />
+              </button>
+            )}
+          </div>
+
+          {filteredRoutines.length === 0 ? (
+            <div className="surface-card px-5 py-10 text-center">
+              <h2 className="font-semibold text-slate-800">
+                No se encontraron rutinas
+              </h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Prueba con otro nombre de rutina o ejercicio.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+          {filteredRoutines.map((routine) => (
             <article
               className="surface-card min-w-0 overflow-hidden p-4 sm:p-5"
               key={routine.id}
@@ -237,7 +304,9 @@ const Workouts = () => {
               )}
             </article>
           ))}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       <dialog
