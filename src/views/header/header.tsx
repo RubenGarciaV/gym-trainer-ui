@@ -25,7 +25,6 @@ const Header = () => {
     try {
       await apiRequest<unknown>("/api/auth/sign-out", { method: "POST" });
       setUser(null);
-      showAlert("success", "Has cerrado sesión.");
       navigate("/", { replace: true });
     } catch (requestError) {
       showAlert(
