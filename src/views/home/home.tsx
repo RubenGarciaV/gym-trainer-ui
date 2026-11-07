@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,7 +13,11 @@ import {
 } from "recharts";
 import { Activity, Plus, Scale, X } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
-import type { WeightEntry, Workout } from "../../api/types";
+import type {
+  BodyMeasurementEntry,
+  WeightEntry,
+  Workout,
+} from "../../api/types";
 import { useModal } from "../../components/modal-provider";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
@@ -20,9 +25,35 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   month: "2-digit",
 });
 
+const measurementOptions = [
+  { key: "chestCm", label: "Pecho" },
+  { key: "waistCm", label: "Cintura" },
+  { key: "hipCm", label: "Cadera" },
+  { key: "armCm", label: "Brazo" },
+  { key: "thighCm", label: "Muslo" },
+  { key: "calfCm", label: "Gemelo" },
+] as const;
+
+type MeasurementKey = (typeof measurementOptions)[number]["key"];
+type MeasurementSelection = MeasurementKey | "all";
+
+const measurementColors = [
+  "#0284c7",
+  "#e11d48",
+  "#7c3aed",
+  "#059669",
+  "#d97706",
+  "#0891b2",
+];
+
 const Home = () => {
   const { showAlert } = useModal();
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
+  const [bodyMeasurements, setBodyMeasurements] = useState<
+    BodyMeasurementEntry[]
+  >([]);
+  const [selectedMeasurement, setSelectedMeasurement] =
+    useState<MeasurementSelection>("all");
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isWeightFormOpen, setIsWeightFormOpen] = useState(false);
@@ -35,11 +66,13 @@ const Home = () => {
 
     Promise.all([
       apiRequest<WeightEntry[]>("/api/v1/weight-entries"),
+      apiRequest<BodyMeasurementEntry[]>("/api/v1/body-measurements"),
       apiRequest<Workout[]>("/api/v1/workouts"),
     ])
-      .then(([entries, workoutHistory]) => {
+      .then(([entries, measurements, workoutHistory]) => {
         if (!active) return;
         setWeightEntries(entries);
+        setBodyMeasurements(measurements);
         setWorkouts(workoutHistory);
       })
       .catch((requestError: unknown) => {
@@ -78,6 +111,39 @@ const Home = () => {
       date: dateFormatter.format(new Date(entry.measuredAt)),
       weight: entry.weightKg,
     }));
+
+  const measurementHistory = bodyMeasurements
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime(),
+    )
+    .map(({
+      chestCm,
+      waistCm,
+      hipCm,
+      armCm,
+      thighCm,
+      calfCm,
+      measuredAt,
+    }) => ({
+      date: dateFormatter.format(new Date(measuredAt)),
+      chestCm,
+      waistCm,
+      hipCm,
+      armCm,
+      thighCm,
+      calfCm,
+    }));
+  const selectedMeasurementOption =
+    selectedMeasurement === "all"
+      ? null
+      : measurementOptions.find(({ key }) => key === selectedMeasurement);
+  const selectedMeasurementHistory =
+    selectedMeasurement === "all"
+      ? measurementHistory
+      : measurementHistory
+          .filter((entry) => entry[selectedMeasurement] !== null)
 
   const handleAddWeight = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -185,19 +251,94 @@ const Home = () => {
                 Último peso
               </p>
             </article>
-            <article className="surface-card col-span-2 p-4 sm:col-span-1">
-              <p className="text-sm font-semibold text-slate-800">
-                {workoutDurationHistory.length
-                  ? "Buen trabajo, sigue así"
-                  : "Tu próximo entrenamiento empieza aquí"}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                {workoutDurationHistory.length
-                  ? "La constancia convierte el esfuerzo en progreso."
-                  : "Completa una rutina para empezar a ver tus estadísticas."}
-              </p>
-            </article>
           </div>
+
+          <article className="surface-card p-4 sm:p-5">
+            <header className="mb-4">
+              <h2 className="text-base font-bold text-slate-800 sm:text-lg">
+                Evolución de tus medidas
+              </h2>
+            </header>
+
+            <label className="mb-4 block max-w-xs space-y-1">
+              <select
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                onChange={(event) => {
+                  if (event.target.value === "all") {
+                    setSelectedMeasurement("all");
+                    return;
+                  }
+                  const option = measurementOptions.find(
+                    ({ key }) => key === event.target.value,
+                  );
+                  if (option) setSelectedMeasurement(option.key);
+                }}
+                value={selectedMeasurement}
+              >
+                <option value="all">Todas las partes</option>
+                {measurementOptions.map(({ key, label }) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedMeasurementHistory.length ? (
+              <div className="history-chart chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={selectedMeasurementHistory}
+                    margin={{ top: 8, right: 12, bottom: 8, left: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis
+                      domain={["dataMin - 2", "dataMax + 2"]}
+                      unit=" cm"
+                      width={72}
+                    />
+                    <Tooltip formatter={(value) => [`${value} cm`]} />
+                    {selectedMeasurement === "all" ? (
+                      <>
+                        <Legend />
+                        {measurementOptions.map(({ key, label }, index) => (
+                          <Line
+                            activeDot={{ r: 6 }}
+                            dataKey={key}
+                            dot={{ r: 3 }}
+                            key={key}
+                            name={label}
+                            stroke={measurementColors[index]}
+                            strokeWidth={2}
+                            type="monotone"
+                          />
+                        ))}
+                      </>
+                    ) : (
+                      <Line
+                        type="monotone"
+                        dataKey={selectedMeasurement}
+                        name={selectedMeasurementOption?.label}
+                        stroke={measurementColors[0]}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="py-12 text-center text-sm text-slate-500">
+                {bodyMeasurements.length
+                  ? selectedMeasurementOption
+                    ? `Aún no has registrado medidas de ${selectedMeasurementOption.label.toLocaleLowerCase()}.`
+                    : "Aún no has registrado medidas corporales."
+                  : "Aún no has registrado medidas corporales."}
+              </p>
+            )}
+          </article>
 
           <article className="surface-card p-4 sm:p-5">
             <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -205,9 +346,6 @@ const Home = () => {
                 <h2 className="text-base font-bold text-slate-800 sm:text-lg">
                   Evolución del peso
                 </h2>
-                <p className="mt-1 text-xs text-slate-500">
-                  Sigue tus mediciones a lo largo del tiempo.
-                </p>
               </div>
               <button
                 className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-sky-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-800"

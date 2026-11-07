@@ -2,14 +2,57 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
+import type { BodyMeasurementEntry } from "../../api/types";
 import { useModal } from "../../components/modal-provider";
 import { useSession } from "../../hooks/auth/session-context";
+
+const measurementFields = [
+  { key: "chestCm", label: "Pecho" },
+  { key: "waistCm", label: "Cintura" },
+  { key: "hipCm", label: "Cadera" },
+  { key: "armCm", label: "Brazo" },
+  { key: "thighCm", label: "Muslo" },
+  { key: "calfCm", label: "Gemelo" },
+] as const;
+
+type MeasurementField = (typeof measurementFields)[number]["key"];
+
+const emptyMeasurementValues = (): Record<MeasurementField, string> => ({
+  chestCm: "",
+  waistCm: "",
+  hipCm: "",
+  armCm: "",
+  thighCm: "",
+  calfCm: "",
+});
+
+const getLocalDate = () => {
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
+const measurementDateFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+});
 
 const Profile = () => {
   const { showAlert } = useModal();
   const { user, setUser, refreshSession, isSessionLoading, sessionError } =
     useSession();
   const [name, setName] = useState("");
+  const [bodyMeasurements, setBodyMeasurements] = useState<
+    BodyMeasurementEntry[]
+  >([]);
+  const [measurementValues, setMeasurementValues] = useState(
+    emptyMeasurementValues,
+  );
+  const [measurementDate, setMeasurementDate] = useState(getLocalDate);
+  const [isLoadingMeasurements, setIsLoadingMeasurements] = useState(true);
+  const [isSavingMeasurements, setIsSavingMeasurements] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -19,6 +62,38 @@ const Profile = () => {
   useEffect(() => {
     if (user) setName(user.name);
   }, [user]);
+
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!userId) {
+      setIsLoadingMeasurements(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoadingMeasurements(true);
+    apiRequest<BodyMeasurementEntry[]>("/api/v1/body-measurements")
+      .then((entries) => {
+        if (active) setBodyMeasurements(entries);
+      })
+      .catch((requestError: unknown) => {
+        if (!active) return;
+        showAlert(
+          "error",
+          requestError instanceof Error
+            ? requestError.message
+            : "No se pudieron cargar tus medidas corporales.",
+        );
+      })
+      .finally(() => {
+        if (active) setIsLoadingMeasurements(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [showAlert, userId]);
 
   useEffect(() => {
     if (sessionError) showAlert("error", sessionError);
@@ -82,6 +157,51 @@ const Profile = () => {
       );
     } finally {
       setIsSavingPassword(false);
+    }
+  };
+
+  const handleAddMeasurements = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    const measurements: Partial<Record<MeasurementField, number>> = {};
+    for (const { key } of measurementFields) {
+      const value = measurementValues[key];
+      if (value !== "") measurements[key] = Number(value);
+    }
+
+    if (Object.keys(measurements).length === 0) {
+      showAlert("error", "Añade al menos una medida corporal.");
+      return;
+    }
+
+    setIsSavingMeasurements(true);
+    try {
+      const measuredAt = new Date(`${measurementDate}T00:00:00`).toISOString();
+      const entry = await apiRequest<BodyMeasurementEntry>(
+        "/api/v1/body-measurements",
+        jsonRequest("POST", { ...measurements, measuredAt }),
+      );
+      setBodyMeasurements((current) =>
+        [entry, ...current].sort(
+          (a, b) =>
+            new Date(b.measuredAt).getTime() -
+            new Date(a.measuredAt).getTime(),
+        ),
+      );
+      setMeasurementValues(emptyMeasurementValues());
+      setMeasurementDate(getLocalDate());
+      showAlert("success", "Tus medidas corporales se han guardado.");
+    } catch (requestError) {
+      showAlert(
+        "error",
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudieron guardar tus medidas corporales.",
+      );
+    } finally {
+      setIsSavingMeasurements(false);
     }
   };
 
@@ -174,6 +294,107 @@ const Profile = () => {
               {isSavingName ? "Guardando..." : "Guardar nombre"}
             </button>
           </form>
+
+          <section className="surface-card space-y-4 p-4 sm:p-5">
+            <div>
+              <h2 className="text-base font-bold text-slate-800 sm:text-lg">
+                Medidas corporales
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Registra tus medidas en centímetros para seguir tu progreso.
+              </p>
+            </div>
+            <form className="space-y-4" onSubmit={handleAddMeasurements}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {measurementFields.map(({ key, label }) => (
+                  <label className="block space-y-1" key={key}>
+                    <span className="text-sm font-medium text-slate-700">
+                      {label} (cm)
+                    </span>
+                    <input
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                      max="999.99"
+                      min="0.01"
+                      onChange={(event) =>
+                        setMeasurementValues((current) => ({
+                          ...current,
+                          [key]: event.target.value,
+                        }))
+                      }
+                      placeholder="Opcional"
+                      step="0.01"
+                      type="number"
+                      value={measurementValues[key]}
+                    />
+                  </label>
+                ))}
+                <label className="block space-y-1">
+                  <span className="text-sm font-medium text-slate-700">
+                    Fecha
+                  </span>
+                  <input
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                    onChange={(event) => setMeasurementDate(event.target.value)}
+                    required
+                    type="date"
+                    value={measurementDate}
+                  />
+                </label>
+              </div>
+              <button
+                className="min-h-11 w-full rounded-xl bg-sky-700 px-4 py-2.5 font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                disabled={isSavingMeasurements}
+                type="submit"
+              >
+                {isSavingMeasurements ? "Guardando..." : "Guardar medidas"}
+              </button>
+            </form>
+
+            <div className="border-t border-slate-100 pt-4">
+              <h3 className="text-sm font-semibold text-slate-800">
+                Historial de medidas
+              </h3>
+              {isLoadingMeasurements ? (
+                <p className="mt-3 text-sm text-slate-500" role="status">
+                  Cargando medidas...
+                </p>
+              ) : bodyMeasurements.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  Todavía no has registrado medidas corporales.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {bodyMeasurements.map((entry) => (
+                    <li
+                      className="rounded-lg bg-slate-50 p-3"
+                      key={entry.id}
+                    >
+                      <p className="text-xs font-medium text-slate-500">
+                        {measurementDateFormatter.format(
+                          new Date(entry.measuredAt),
+                        )}
+                      </p>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-3">
+                        {measurementFields.map(({ key, label }) =>
+                          entry[key] === null ? null : (
+                            <div
+                              className="flex justify-between gap-2 text-sm"
+                              key={key}
+                            >
+                              <dt className="text-slate-500">{label}</dt>
+                              <dd className="font-medium text-slate-700">
+                                {entry[key]} cm
+                              </dd>
+                            </div>
+                          ),
+                        )}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
 
           <form
             className="surface-card space-y-4 p-4 sm:p-5"

@@ -34,9 +34,11 @@ const WorkoutSession = () => {
     () => new Set(),
   );
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
+  const [restSetId, setRestSetId] = useState<string | null>(null);
   const [restRemaining, setRestRemaining] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
+  const restTimerRef = useRef<HTMLDivElement>(null);
   const sessionStartedAt = startedAt ? new Date(startedAt) : null;
   const hasValidStartTime =
     sessionStartedAt !== null &&
@@ -108,13 +110,25 @@ const WorkoutSession = () => {
         Math.ceil((restEndsAt - Date.now()) / 1000),
       );
       setRestRemaining(remaining);
-      if (remaining === 0) setRestEndsAt(null);
+      if (remaining === 0) {
+        setRestEndsAt(null);
+        setRestSetId(null);
+      }
     };
 
     updateRemaining();
     const interval = window.setInterval(updateRemaining, 250);
     return () => window.clearInterval(interval);
   }, [restEndsAt]);
+
+  useEffect(() => {
+    if (restSetId) {
+      restTimerRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [restSetId]);
 
   const completeWorkout = async () => {
     if (!routine || !startedAt || !hasValidStartTime || isSavingRef.current) {
@@ -168,6 +182,7 @@ const WorkoutSession = () => {
       nextCompleted.delete(setId);
       setCompletedSetIds(nextCompleted);
       setRestEndsAt(null);
+      setRestSetId(null);
       return;
     }
 
@@ -181,6 +196,7 @@ const WorkoutSession = () => {
 
     if (!isLast && exercise.restSeconds > 0) {
       setRestEndsAt(Date.now() + exercise.restSeconds * 1000);
+      setRestSetId(setId);
     }
   };
 
@@ -267,34 +283,6 @@ const WorkoutSession = () => {
         </span>
       </header>
 
-      {restRemaining > 0 && (
-        <div
-          aria-live="polite"
-          className="surface-card flex items-center justify-between gap-3 border-amber-200 bg-amber-50 p-4 text-amber-950"
-          role="status"
-        >
-          <div className="flex items-center gap-3">
-            <Clock3 aria-hidden="true" className="shrink-0" size={22} />
-            <div>
-              <p className="font-semibold">Tiempo de descanso</p>
-              <p className="text-sm">Prepara la siguiente serie.</p>
-            </div>
-          </div>
-          <span className="min-w-14 text-right text-2xl font-bold tabular-nums sm:min-w-16">
-            {Math.floor(restRemaining / 60)}:
-            {String(restRemaining % 60).padStart(2, "0")}
-          </span>
-          <button
-            aria-label="Saltar descanso"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-amber-800 hover:bg-amber-100"
-            onClick={() => setRestEndsAt(null)}
-            type="button"
-          >
-            <SkipForward aria-hidden="true" size={19} />
-          </button>
-        </div>
-      )}
-
       <div className="space-y-4">
         {routine.exercises.map((exercise) => (
           <article
@@ -321,42 +309,78 @@ const WorkoutSession = () => {
 
                 return (
                   <li
-                    className={`flex items-center justify-between gap-3 rounded-xl px-2 py-3 transition ${
+                    className={`rounded-xl px-2 transition ${
                       isChecked ? "bg-emerald-50/70" : ""
                     }`}
                     key={set.id}
                   >
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                      <input
-                        aria-label={`Marcar serie ${set.setNumber} de ${exercise.exercise.name} como completada`}
-                        checked={isChecked}
-                        className="size-6 shrink-0 accent-sky-700"
-                        disabled={isDisabled}
-                        onChange={() => {
-                          const item = sessionSets.find(
-                            ({ set: sessionSet }) => sessionSet.id === set.id,
-                          );
-                          if (item) void toggleSet(item);
-                        }}
-                        type="checkbox"
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium text-slate-700">
-                          Serie {set.setNumber} · {set.reps} repeticiones
+                    <div className="flex items-center justify-between gap-3 py-3">
+                      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                        <input
+                          aria-label={`Marcar serie ${set.setNumber} de ${exercise.exercise.name} como completada`}
+                          checked={isChecked}
+                          className="size-6 shrink-0 accent-sky-700"
+                          disabled={isDisabled}
+                          onChange={() => {
+                            const item = sessionSets.find(
+                              ({ set: sessionSet }) => sessionSet.id === set.id,
+                            );
+                            if (item) void toggleSet(item);
+                          }}
+                          type="checkbox"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-slate-700">
+                            Serie {set.setNumber} · {set.reps} repeticiones
+                          </span>
+                          <span className="block text-xs text-slate-500">
+                            {set.weightKg !== null
+                              ? `${set.weightKg} kg`
+                              : "Sin peso objetivo"}
+                          </span>
                         </span>
-                        <span className="block text-xs text-slate-500">
-                          {set.weightKg !== null
-                            ? `${set.weightKg} kg`
-                            : "Sin peso objetivo"}
+                      </label>
+                      {isChecked && (
+                        <Check
+                          aria-label="Serie completada"
+                          className="shrink-0 text-emerald-600"
+                          size={18}
+                        />
+                      )}
+                    </div>
+                    {restSetId === set.id && restRemaining > 0 && (
+                      <div
+                        aria-live="polite"
+                        className="mb-2 ml-9 flex scroll-mt-20 scroll-mb-24 items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950 sm:ml-10"
+                        ref={restTimerRef}
+                        role="status"
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Clock3
+                            aria-hidden="true"
+                            className="shrink-0 text-amber-700"
+                            size={18}
+                          />
+                          <span className="text-xs font-semibold sm:text-sm">
+                            Descanso
+                          </span>
+                        </div>
+                        <span className="min-w-12 text-right text-lg font-bold tabular-nums">
+                          {Math.floor(restRemaining / 60)}:
+                          {String(restRemaining % 60).padStart(2, "0")}
                         </span>
-                      </span>
-                    </label>
-                    {isChecked && (
-                      <Check
-                        aria-label="Serie completada"
-                        className="shrink-0 text-emerald-600"
-                        size={18}
-                      />
+                        <button
+                          aria-label="Saltar descanso"
+                          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-amber-800 hover:bg-amber-100"
+                          onClick={() => {
+                            setRestEndsAt(null);
+                            setRestSetId(null);
+                          }}
+                          type="button"
+                        >
+                          <SkipForward aria-hidden="true" size={17} />
+                        </button>
+                      </div>
                     )}
                   </li>
                 );

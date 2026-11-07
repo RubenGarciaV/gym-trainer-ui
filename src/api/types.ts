@@ -12,6 +12,19 @@ export interface WeightEntry {
   createdAt: string;
 }
 
+export interface BodyMeasurementEntry {
+  id: string;
+  userId: string;
+  chestCm: number | null;
+  waistCm: number | null;
+  hipCm: number | null;
+  armCm: number | null;
+  thighCm: number | null;
+  calfCm: number | null;
+  measuredAt: string;
+  createdAt: string;
+}
+
 export interface WorkoutSet {
   id: string;
   setNumber: number;

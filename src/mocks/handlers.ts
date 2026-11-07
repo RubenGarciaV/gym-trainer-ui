@@ -103,6 +103,19 @@ interface MockWeightEntry {
   createdAt: string;
 }
 
+interface MockBodyMeasurementEntry {
+  id: string;
+  userId: string;
+  chestCm: number | null;
+  waistCm: number | null;
+  hipCm: number | null;
+  armCm: number | null;
+  thighCm: number | null;
+  calfCm: number | null;
+  measuredAt: string;
+  createdAt: string;
+}
+
 const now = new Date();
 const timestampDaysAgo = (daysAgo: number, hour: number) => {
   const date = new Date(now);
@@ -198,6 +211,60 @@ const weightEntries: MockWeightEntry[] = [
   id: `demo-weight-${day}`,
   userId: demoUser.id,
   weightKg: weight,
+  measuredAt: timestampDaysAgo(day, 8),
+  createdAt: timestampDaysAgo(day, 8),
+}));
+
+const bodyMeasurementEntries: MockBodyMeasurementEntry[] = [
+  {
+    day: 35,
+    chestCm: 101,
+    waistCm: 88,
+    hipCm: 103,
+    armCm: 35,
+    thighCm: 60,
+    calfCm: 38,
+  },
+  {
+    day: 28,
+    chestCm: 100.5,
+    waistCm: 87,
+    hipCm: 102.5,
+    armCm: 35.2,
+    thighCm: 59.5,
+    calfCm: 38,
+  },
+  {
+    day: 21,
+    chestCm: 100,
+    waistCm: 86,
+    hipCm: 102,
+    armCm: 35.3,
+    thighCm: 59,
+    calfCm: 37.8,
+  },
+  {
+    day: 14,
+    chestCm: 99.5,
+    waistCm: 85,
+    hipCm: 101.5,
+    armCm: 35.5,
+    thighCm: 58.8,
+    calfCm: 37.8,
+  },
+  {
+    day: 7,
+    chestCm: 99,
+    waistCm: 84,
+    hipCm: 101,
+    armCm: 35.6,
+    thighCm: 58.5,
+    calfCm: 37.5,
+  },
+].map(({ day, ...measurements }) => ({
+  id: `demo-measurements-${day}`,
+  userId: demoUser.id,
+  ...measurements,
   measuredAt: timestampDaysAgo(day, 8),
   createdAt: timestampDaysAgo(day, 8),
 }));
@@ -607,6 +674,83 @@ export const handlers = [
       createdAt: new Date().toISOString(),
     };
     weightEntries.push(entry);
+    return HttpResponse.json(entry, { status: 201 });
+  }),
+
+  http.get("*/api/v1/body-measurements", ({ request }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    return HttpResponse.json(
+      bodyMeasurementEntries
+        .filter((entry) => entry.userId === user.id)
+        .sort(
+          (a, b) =>
+            new Date(b.measuredAt).getTime() -
+            new Date(a.measuredAt).getTime(),
+        ),
+    );
+  }),
+
+  http.post("*/api/v1/body-measurements", async ({ request }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    const body: unknown = await request.json();
+    const measurementKeys = [
+      "chestCm",
+      "waistCm",
+      "hipCm",
+      "armCm",
+      "thighCm",
+      "calfCm",
+    ] as const;
+    if (!isRecord(body)) {
+      return jsonError("Añade al menos una medida corporal válida.", 400);
+    }
+
+    const hasMeasurement = measurementKeys.some((key) => key in body);
+    if (
+      !hasMeasurement ||
+      measurementKeys.some(
+        (key) =>
+          key in body &&
+          (typeof body[key] !== "number" ||
+            !Number.isFinite(body[key]) ||
+            body[key] < 0.01 ||
+            body[key] > 999.99),
+      )
+    ) {
+      return jsonError(
+        "Las medidas deben estar entre 0.01 y 999.99 cm.",
+        400,
+      );
+    }
+
+    const measuredAt =
+      typeof body.measuredAt === "string" &&
+      Number.isFinite(Date.parse(body.measuredAt))
+        ? body.measuredAt
+        : body.measuredAt === undefined
+          ? new Date().toISOString()
+          : null;
+    if (!measuredAt) {
+      return jsonError("La fecha de medición no es válida.", 400);
+    }
+
+    const entry: MockBodyMeasurementEntry = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      chestCm: typeof body.chestCm === "number" ? body.chestCm : null,
+      waistCm: typeof body.waistCm === "number" ? body.waistCm : null,
+      hipCm: typeof body.hipCm === "number" ? body.hipCm : null,
+      armCm: typeof body.armCm === "number" ? body.armCm : null,
+      thighCm: typeof body.thighCm === "number" ? body.thighCm : null,
+      calfCm: typeof body.calfCm === "number" ? body.calfCm : null,
+      measuredAt,
+      createdAt: new Date().toISOString(),
+    };
+    bodyMeasurementEntries.push(entry);
     return HttpResponse.json(entry, { status: 201 });
   }),
 
