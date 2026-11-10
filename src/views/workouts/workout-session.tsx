@@ -31,6 +31,7 @@ const WorkoutSession = () => {
     activeWorkout,
     startWorkout,
     updateWorkoutProgress,
+    prepareRestBellSound,
     clearWorkout,
   } = useWorkoutProgress();
   const startedAt = searchParams.get("startedAt");
@@ -40,6 +41,7 @@ const WorkoutSession = () => {
   const [restRemaining, setRestRemaining] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
+  const hasCompletedWorkoutRef = useRef(false);
   const restTimerRef = useRef<HTMLDivElement>(null);
   const sessionStartedAt = startedAt ? new Date(startedAt) : null;
   const hasValidStartTime =
@@ -55,6 +57,8 @@ const WorkoutSession = () => {
   const restSetId = activeWorkout?.restSetId ?? null;
 
   useEffect(() => {
+    if (hasCompletedWorkoutRef.current) return;
+
     if (isDifferentActiveWorkout && activeWorkout) {
       navigate(
         `/workouts/${encodeURIComponent(activeWorkout.routineId)}/start?startedAt=${encodeURIComponent(activeWorkout.startedAt)}`,
@@ -158,15 +162,12 @@ const WorkoutSession = () => {
         Math.ceil((restEndsAt - Date.now()) / 1000),
       );
       setRestRemaining(remaining);
-      if (remaining === 0) {
-        updateWorkoutProgress({ restEndsAt: null, restSetId: null });
-      }
     };
 
     updateRemaining();
     const interval = window.setInterval(updateRemaining, 250);
     return () => window.clearInterval(interval);
-  }, [restEndsAt, updateWorkoutProgress]);
+  }, [restEndsAt]);
 
   useEffect(() => {
     if (restSetId) {
@@ -204,6 +205,7 @@ const WorkoutSession = () => {
           })),
         }),
       );
+      hasCompletedWorkoutRef.current = true;
       clearWorkout();
       showAlert("success", `Has completado «${routine.name}».`);
       navigate("/history", { replace: true });
@@ -245,6 +247,7 @@ const WorkoutSession = () => {
     }
 
     if (!isLast && exercise.restSeconds > 0) {
+      prepareRestBellSound();
       updateWorkoutProgress({
         restEndsAt: Date.now() + exercise.restSeconds * 1000,
         restSetId: setId,

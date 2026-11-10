@@ -9,6 +9,59 @@ import {
 import type { Routine } from "../../api/types";
 import { useSession } from "../auth/session-context";
 
+let workoutAudioContext: AudioContext | null = null;
+
+const prepareRestBellSound = () => {
+  if (!("AudioContext" in window)) {
+    console.warn("Web Audio is unavailable; rest timer sound is disabled.");
+    return;
+  }
+
+  workoutAudioContext ??= new AudioContext();
+  if (workoutAudioContext.state === "suspended") {
+    void workoutAudioContext.resume().catch((error: unknown) => {
+      console.error("Could not activate the rest timer sound.", error);
+    });
+  }
+};
+
+const playRestBellSound = () => {
+  if (!workoutAudioContext) return;
+  const audioContext = workoutAudioContext;
+
+  const play = () => {
+    if (audioContext.state !== "running") return;
+
+    const now = audioContext.currentTime;
+    [
+      { frequency: 587.33, volume: 0.18 },
+      { frequency: 880, volume: 0.12 },
+      { frequency: 1174.66, volume: 0.08 },
+      { frequency: 1760, volume: 0.04 },
+    ].forEach(({ frequency, volume }) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 1.4);
+    });
+  };
+
+  if (audioContext.state === "running") {
+    play();
+  } else {
+    void audioContext.resume().then(play).catch((error: unknown) => {
+      console.error("Could not play the rest timer sound.", error);
+    });
+  }
+};
+
 export interface ActiveWorkoutProgress {
   routineId: string;
   routine: Routine | null;
@@ -30,6 +83,7 @@ interface WorkoutProgressContextValue {
       Omit<ActiveWorkoutProgress, "routineId" | "startedAt">
     >,
   ) => void;
+  prepareRestBellSound: () => void;
   clearWorkout: () => void;
 }
 
@@ -78,6 +132,22 @@ export const WorkoutProgressProvider = ({
     [],
   );
 
+  useEffect(() => {
+    const restEndsAt = activeWorkout?.restEndsAt;
+    if (restEndsAt === null || restEndsAt === undefined) return;
+
+    const timeout = window.setTimeout(() => {
+      playRestBellSound();
+      setActiveWorkout((current) =>
+        current?.restEndsAt === restEndsAt
+          ? { ...current, restEndsAt: null, restSetId: null }
+          : current,
+      );
+    }, Math.max(0, restEndsAt - Date.now()));
+
+    return () => window.clearTimeout(timeout);
+  }, [activeWorkout?.restEndsAt]);
+
   const clearWorkout = useCallback(() => {
     setActiveWorkout(null);
   }, []);
@@ -88,6 +158,7 @@ export const WorkoutProgressProvider = ({
         activeWorkout,
         startWorkout,
         updateWorkoutProgress,
+        prepareRestBellSound,
         clearWorkout,
       }}
     >
