@@ -25,6 +25,8 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   month: "2-digit",
 });
 
+const weekDayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
 const measurementOptions = [
   { key: "chestCm", label: "Pecho" },
   { key: "waistCm", label: "Cintura" },
@@ -182,28 +184,43 @@ const Home = () => {
     }
   };
 
-  const workoutDurationHistory = workouts
-    .filter(
-      (workout): workout is Workout & { startedAt: string } =>
-        workout.startedAt !== null,
-    )
-    .map((workout) => {
-      const duration = Math.round(
-        (new Date(workout.completedAt).getTime() -
-          new Date(workout.startedAt).getTime()) /
-          60_000,
-      );
+  const currentWeekStart = new Date();
+  currentWeekStart.setHours(0, 0, 0, 0);
+  currentWeekStart.setDate(
+    currentWeekStart.getDate() - ((currentWeekStart.getDay() + 6) % 7),
+  );
+  const workoutDurationByDay = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(currentWeekStart);
+    date.setDate(date.getDate() + index);
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
-      return {
-        date: dateFormatter.format(new Date(workout.completedAt)),
-        name: workout.name,
-        duration,
-        completedAt: new Date(workout.completedAt).getTime(),
-      };
-    })
-    .filter(({ duration }) => duration >= 0)
-    .sort((a, b) => a.completedAt - b.completedAt)
-    .slice(-7);
+    return {
+      day: weekDayLabels[index],
+      key,
+      duration: 0,
+      workoutNames: [] as string[],
+    };
+  });
+  const workoutDurationByDate = new Map(
+    workoutDurationByDay.map((entry) => [entry.key, entry]),
+  );
+
+  workouts.forEach((workout) => {
+    if (!workout.startedAt) return;
+
+    const completedAt = new Date(workout.completedAt);
+    const dateKey = `${completedAt.getFullYear()}-${completedAt.getMonth()}-${completedAt.getDate()}`;
+    const day = workoutDurationByDate.get(dateKey);
+    if (!day) return;
+
+    const duration = Math.round(
+      (completedAt.getTime() - new Date(workout.startedAt).getTime()) / 60_000,
+    );
+    if (duration >= 0) {
+      day.duration += duration;
+      day.workoutNames.push(workout.name);
+    }
+  });
   const latestWeight = weightEntries.reduce<WeightEntry | null>(
     (latest, entry) =>
       !latest || new Date(entry.measuredAt) > new Date(latest.measuredAt)
@@ -472,41 +489,36 @@ const Home = () => {
 
           <article className="surface-card p-4 sm:p-5">
             <h2 className="text-base font-bold text-slate-800 sm:text-lg">
-              Duración de tus entrenamientos
+              Entrenamientos de esta semana
             </h2>
             <p className="mt-1 text-xs text-slate-500">
-              Tiempo de tus últimas 7 sesiones completadas.
+              Tiempo total por día, de lunes a domingo.
             </p>
-            {workoutDurationHistory.length ? (
-              <div className="history-chart chart-container mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={workoutDurationHistory}
-                    margin={{ top: 8, right: 12, bottom: 8, left: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis unit=" min" width={72} />
-                    <Tooltip
-                      labelFormatter={(_, payload) =>
-                        payload[0]?.payload.name ?? ""
-                      }
-                      formatter={(value) => [`${value} min`, "Duración"]}
-                    />
-                    <Bar
-                      dataKey="duration"
-                      name="Duración"
-                      fill="#0284c7"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="py-12 text-center text-sm text-slate-500">
-                Aún no hay entrenamientos con duración registrada.
-              </p>
-            )}
+            <div className="history-chart chart-container mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={workoutDurationByDay}
+                  margin={{ top: 8, right: 12, bottom: 8, left: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis unit=" min" width={72} />
+                  <Tooltip
+                    labelFormatter={(_, payload) =>
+                      payload[0]?.payload.workoutNames.join(", ") ||
+                      "Sin entrenamientos"
+                    }
+                    formatter={(value) => [`${value} min`, "Duración"]}
+                  />
+                  <Bar
+                    dataKey="duration"
+                    name="Duración"
+                    fill="#0284c7"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </article>
         </>
       )}

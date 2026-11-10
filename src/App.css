@@ -149,6 +149,15 @@ button {
   border-bottom: 1px solid rgb(226 232 240 / 85%);
   background: rgb(255 255 255 / 92%);
   backdrop-filter: blur(14px);
+  transition: transform 220ms ease;
+}
+
+.topbar--hidden {
+  transform: translateY(-100%);
+}
+
+.topbar:focus-within {
+  transform: translateY(0);
 }
 
 .topbar-inner {

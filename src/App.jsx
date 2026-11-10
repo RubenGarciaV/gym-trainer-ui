@@ -10,6 +10,7 @@ import { lazy, useEffect } from 'react';
 import Header from './views/header/header';
 import Footer from './views/footer/footer';
 import { SessionProvider, useSession } from './hooks/auth/session-context';
+import { WorkoutProgressProvider } from './hooks/workouts/workout-progress-context';
 import { ModalProvider, useModal } from './components/modal-provider';
 
 const Login = lazy(() => import('./views/login/login'));
@@ -70,7 +71,9 @@ function App() {
     <BrowserRouter>
       <ModalProvider>
         <SessionProvider>
-          <AppContent />
+          <WorkoutProgressProvider>
+            <AppContent />
+          </WorkoutProgressProvider>
         </SessionProvider>
       </ModalProvider>
     </BrowserRouter>

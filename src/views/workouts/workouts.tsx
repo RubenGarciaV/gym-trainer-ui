@@ -13,6 +13,7 @@ import { useModal } from "../../components/modal-provider";
 import type { Routine } from "../../api/types";
 import RoutineForm, { type RoutineInput } from "../training/routine-form";
 import { Link, useNavigate } from "react-router-dom";
+import { useWorkoutProgress } from "../../hooks/workouts/workout-progress-context";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "medium",
@@ -27,6 +28,7 @@ const normalizeSearchText = (value: string) =>
 const Workouts = () => {
   const navigate = useNavigate();
   const { showAlert, confirmAction } = useModal();
+  const { activeWorkout, startWorkout } = useWorkoutProgress();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -150,6 +152,35 @@ const Workouts = () => {
         </Link>
       </div>
 
+      {activeWorkout && (
+        <aside className="surface-card flex flex-wrap items-center justify-between gap-3 border-sky-200 bg-sky-50 p-4">
+          <div>
+            <p className="font-semibold text-sky-900">
+              Entrenamiento en curso
+            </p>
+            <p className="mt-1 text-sm text-sky-800">
+              {activeWorkout.routine?.name ??
+                routines.find(({ id }) => id === activeWorkout.routineId)?.name ??
+                "El progreso se conserva mientras navegas"}
+              {" · "}
+              {activeWorkout.completedSetIds.length} series completadas
+            </p>
+          </div>
+          <button
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800"
+            onClick={() =>
+              navigate(
+                `/workouts/${encodeURIComponent(activeWorkout.routineId)}/start?startedAt=${encodeURIComponent(activeWorkout.startedAt)}`,
+              )
+            }
+            type="button"
+          >
+            <Play aria-hidden="true" size={16} fill="currentColor" />
+            Continuar
+          </button>
+        </aside>
+      )}
+
       {isLoading ? (
         <p className="surface-card p-5 text-sm text-slate-500" role="status">
           Cargando rutinas...
@@ -235,9 +266,10 @@ const Workouts = () => {
                   <button
                     aria-label={`Iniciar entrenamiento ${routine.name}`}
                     className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
-                    disabled={routine.exercises.length === 0}
+                    disabled={routine.exercises.length === 0 || !!activeWorkout}
                     onClick={() => {
                       const startedAt = new Date().toISOString();
+                      startWorkout(routine.id, startedAt, routine);
                       navigate(
                         `/workouts/${encodeURIComponent(routine.id)}/start?startedAt=${encodeURIComponent(startedAt)}`,
                       );

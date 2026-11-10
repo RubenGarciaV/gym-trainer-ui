@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, Clock3, Dumbbell, House, LogOut, Plus, UserRound } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../api/client";
@@ -18,6 +18,28 @@ const Header = () => {
   const { showAlert } = useModal();
   const { user, setUser, isSessionLoading } = useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
+  useEffect(() => {
+    let previousScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const scrollDifference = currentScrollY - previousScrollY;
+
+      if (currentScrollY <= 0) {
+        setIsHidden(false);
+      } else if (Math.abs(scrollDifference) > 8) {
+        setIsHidden(scrollDifference > 0 && currentScrollY > 80);
+      }
+
+      previousScrollY = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -39,7 +61,7 @@ const Header = () => {
   };
 
   return (
-    <header className="topbar">
+    <header className={`topbar${isHidden ? " topbar--hidden" : ""}`}>
       <div className="topbar-inner">
         <div className="brand-lockup">
           <span aria-hidden="true" className="brand-mark">

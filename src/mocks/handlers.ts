@@ -416,6 +416,128 @@ const parseRoutineExercises = (
   return { exercises: parsedExercises };
 };
 
+const demoRoutineTemplates: Array<{
+  id: string;
+  name: string;
+  exercises: RoutineExerciseRequest[];
+}> = [
+  {
+    id: "demo-routine-upper",
+    name: "Tren superior",
+    exercises: [
+      {
+        exerciseId: "exercise-bench-press",
+        position: 0,
+        restSeconds: 90,
+        sets: [
+          { setNumber: 1, reps: 10, weightKg: 40 },
+          { setNumber: 2, reps: 10, weightKg: 40 },
+          { setNumber: 3, reps: 8, weightKg: 45 },
+        ],
+      },
+      {
+        exerciseId: "exercise-row",
+        position: 1,
+        restSeconds: 90,
+        sets: [
+          { setNumber: 1, reps: 10, weightKg: 35 },
+          { setNumber: 2, reps: 10, weightKg: 35 },
+          { setNumber: 3, reps: 8, weightKg: 40 },
+        ],
+      },
+      {
+        exerciseId: "exercise-overhead-press",
+        position: 2,
+        restSeconds: 60,
+        sets: [
+          { setNumber: 1, reps: 10, weightKg: 20 },
+          { setNumber: 2, reps: 10, weightKg: 20 },
+          { setNumber: 3, reps: 8, weightKg: 22.5 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "demo-routine-legs",
+    name: "Pierna",
+    exercises: [
+      {
+        exerciseId: "exercise-squat",
+        position: 0,
+        restSeconds: 120,
+        sets: [
+          { setNumber: 1, reps: 10, weightKg: 50 },
+          { setNumber: 2, reps: 10, weightKg: 50 },
+          { setNumber: 3, reps: 8, weightKg: 60 },
+        ],
+      },
+      {
+        exerciseId: "exercise-deadlift",
+        position: 1,
+        restSeconds: 90,
+        sets: [
+          { setNumber: 1, reps: 10, weightKg: 40 },
+          { setNumber: 2, reps: 10, weightKg: 40 },
+          { setNumber: 3, reps: 8, weightKg: 45 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "demo-routine-full-body",
+    name: "Full body",
+    exercises: [
+      {
+        exerciseId: "exercise-squat",
+        position: 0,
+        restSeconds: 90,
+        sets: [
+          { setNumber: 1, reps: 10, weightKg: 45 },
+          { setNumber: 2, reps: 10, weightKg: 45 },
+          { setNumber: 3, reps: 10, weightKg: 45 },
+        ],
+      },
+      {
+        exerciseId: "exercise-bench-press",
+        position: 1,
+        restSeconds: 90,
+        sets: [
+          { setNumber: 1, reps: 10, weightKg: 35 },
+          { setNumber: 2, reps: 10, weightKg: 35 },
+          { setNumber: 3, reps: 10, weightKg: 35 },
+        ],
+      },
+      {
+        exerciseId: "exercise-pull-up",
+        position: 2,
+        restSeconds: 60,
+        sets: [
+          { setNumber: 1, reps: 8 },
+          { setNumber: 2, reps: 8 },
+          { setNumber: 3, reps: 6 },
+        ],
+      },
+    ],
+  },
+];
+
+for (const { id, name, exercises } of demoRoutineTemplates) {
+  const parsedExercises = parseRoutineExercises(exercises);
+  if ("error" in parsedExercises) {
+    throw new Error(`Invalid mock routine "${name}": ${parsedExercises.error}`);
+  }
+
+  const timestamp = timestampDaysAgo(30, 9);
+  routines.push({
+    id,
+    userId: demoUser.id,
+    name,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    exercises: parsedExercises.exercises,
+  });
+}
+
 const isAuthRequest = (value: unknown): value is AuthRequest =>
   isRecord(value);
 

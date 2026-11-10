@@ -9,6 +9,7 @@ import type {
   WorkoutSet,
 } from "../../api/types";
 import { useModal } from "../../components/modal-provider";
+import { useWorkoutProgress } from "../../hooks/workouts/workout-progress-context";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "medium",
@@ -26,15 +27,16 @@ const WorkoutSession = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { showAlert, confirmAction } = useModal();
+  const {
+    activeWorkout,
+    startWorkout,
+    updateWorkoutProgress,
+    clearWorkout,
+  } = useWorkoutProgress();
   const startedAt = searchParams.get("startedAt");
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [completedSetIds, setCompletedSetIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
-  const [restSetId, setRestSetId] = useState<string | null>(null);
   const [restRemaining, setRestRemaining] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
@@ -44,6 +46,35 @@ const WorkoutSession = () => {
     sessionStartedAt !== null &&
     Number.isFinite(sessionStartedAt.getTime()) &&
     sessionStartedAt.getTime() <= Date.now();
+  const isDifferentActiveWorkout =
+    !!activeWorkout &&
+    (activeWorkout.routineId !== routineId ||
+      activeWorkout.startedAt !== startedAt);
+  const completedSetIds = new Set(activeWorkout?.completedSetIds ?? []);
+  const restEndsAt = activeWorkout?.restEndsAt ?? null;
+  const restSetId = activeWorkout?.restSetId ?? null;
+
+  useEffect(() => {
+    if (isDifferentActiveWorkout && activeWorkout) {
+      navigate(
+        `/workouts/${encodeURIComponent(activeWorkout.routineId)}/start?startedAt=${encodeURIComponent(activeWorkout.startedAt)}`,
+        { replace: true },
+      );
+      return;
+    }
+
+    if (!activeWorkout && routineId && startedAt && hasValidStartTime) {
+      startWorkout(routineId, startedAt);
+    }
+  }, [
+    activeWorkout,
+    hasValidStartTime,
+    isDifferentActiveWorkout,
+    navigate,
+    routineId,
+    startWorkout,
+    startedAt,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -54,15 +85,25 @@ const WorkoutSession = () => {
       return;
     }
 
-    if (!hasValidStartTime) {
+    if (!hasValidStartTime || isDifferentActiveWorkout) {
+      if (isDifferentActiveWorkout) return;
       setLoadError("Inicia el entrenamiento desde una rutina guardada.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (activeWorkout?.routine) {
+      setRoutine(activeWorkout.routine);
       setIsLoading(false);
       return;
     }
 
     apiRequest<Routine>(`/api/v1/routines/${encodeURIComponent(routineId)}`)
       .then((result) => {
-        if (active) setRoutine(result);
+        if (active) {
+          setRoutine(result);
+          updateWorkoutProgress({ routine: result });
+        }
       })
       .catch((requestError: unknown) => {
         if (!active) return;
@@ -80,7 +121,14 @@ const WorkoutSession = () => {
     return () => {
       active = false;
     };
-  }, [hasValidStartTime, routineId, showAlert]);
+  }, [
+    activeWorkout?.routine,
+    hasValidStartTime,
+    isDifferentActiveWorkout,
+    routineId,
+    showAlert,
+    updateWorkoutProgress,
+  ]);
 
   const sessionSets = useMemo<SessionSet[]>(
     () =>
@@ -111,15 +159,14 @@ const WorkoutSession = () => {
       );
       setRestRemaining(remaining);
       if (remaining === 0) {
-        setRestEndsAt(null);
-        setRestSetId(null);
+        updateWorkoutProgress({ restEndsAt: null, restSetId: null });
       }
     };
 
     updateRemaining();
     const interval = window.setInterval(updateRemaining, 250);
     return () => window.clearInterval(interval);
-  }, [restEndsAt]);
+  }, [restEndsAt, updateWorkoutProgress]);
 
   useEffect(() => {
     if (restSetId) {
@@ -157,6 +204,7 @@ const WorkoutSession = () => {
           })),
         }),
       );
+      clearWorkout();
       showAlert("success", `Has completado «${routine.name}».`);
       navigate("/history", { replace: true });
     } catch (requestError) {
@@ -180,14 +228,16 @@ const WorkoutSession = () => {
     const nextCompleted = new Set(completedSetIds);
     if (nextCompleted.has(setId)) {
       nextCompleted.delete(setId);
-      setCompletedSetIds(nextCompleted);
-      setRestEndsAt(null);
-      setRestSetId(null);
+      updateWorkoutProgress({
+        completedSetIds: [...nextCompleted],
+        restEndsAt: null,
+        restSetId: null,
+      });
       return;
     }
 
     nextCompleted.add(setId);
-    setCompletedSetIds(nextCompleted);
+    updateWorkoutProgress({ completedSetIds: [...nextCompleted] });
 
     if (nextCompleted.size === sessionSets.length) {
       await completeWorkout();
@@ -195,8 +245,10 @@ const WorkoutSession = () => {
     }
 
     if (!isLast && exercise.restSeconds > 0) {
-      setRestEndsAt(Date.now() + exercise.restSeconds * 1000);
-      setRestSetId(setId);
+      updateWorkoutProgress({
+        restEndsAt: Date.now() + exercise.restSeconds * 1000,
+        restSetId: setId,
+      });
     }
   };
 
@@ -205,7 +257,10 @@ const WorkoutSession = () => {
       "El progreso de este entrenamiento se perderá. ¿Quieres salir?",
       "Salir del entrenamiento",
     );
-    if (shouldLeave) navigate("/workouts");
+    if (shouldLeave) {
+      clearWorkout();
+      navigate("/workouts");
+    }
   };
 
   if (isLoading) {
@@ -239,7 +294,6 @@ const WorkoutSession = () => {
 
   const progress = completedSetIds.size;
   const totalSets = sessionSets.length;
-  const isComplete = totalSets > 0 && progress === totalSets;
 
   if (totalSets === 0) {
     return (
@@ -373,8 +427,10 @@ const WorkoutSession = () => {
                           aria-label="Saltar descanso"
                           className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-amber-800 hover:bg-amber-100"
                           onClick={() => {
-                            setRestEndsAt(null);
-                            setRestSetId(null);
+                            updateWorkoutProgress({
+                              restEndsAt: null,
+                              restSetId: null,
+                            });
                           }}
                           type="button"
                         >
@@ -390,16 +446,14 @@ const WorkoutSession = () => {
         ))}
       </div>
 
-      {isComplete && (
-        <button
-          className="min-h-12 w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isSaving}
-          onClick={() => void completeWorkout()}
-          type="button"
-        >
-          {isSaving ? "Guardando entrenamiento..." : "Guardar entrenamiento"}
-        </button>
-      )}
+      <button
+        className="min-h-12 w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={isSaving}
+        onClick={() => void completeWorkout()}
+        type="button"
+      >
+        {isSaving ? "Guardando entrenamiento..." : "Completar entrenamiento"}
+      </button>
     </section>
   );
 };
