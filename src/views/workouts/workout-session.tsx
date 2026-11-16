@@ -363,6 +363,12 @@ const WorkoutSession = () => {
               {exercise.sets.map((set) => {
                 const isChecked = completedSetIds.has(set.id);
                 const isDisabled = isSaving || restRemaining > 0;
+                const isResting = restSetId === set.id && restRemaining > 0;
+                const restDurationSeconds = isResting ? exercise.restSeconds : 0;
+                const restProgressPercent =
+                  restDurationSeconds > 0
+                    ? Math.max(0, (restRemaining / restDurationSeconds) * 100)
+                    : 0;
 
                 return (
                   <li
@@ -405,40 +411,48 @@ const WorkoutSession = () => {
                         />
                       )}
                     </div>
-                    {restSetId === set.id && restRemaining > 0 && (
+                    {isResting && (
                       <div
                         aria-live="polite"
-                        className="mb-2 ml-9 flex scroll-mt-20 scroll-mb-24 items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950 sm:ml-10"
+                        className="mb-2 overflow-hidden rounded-xl border border-amber-200 bg-amber-50 text-amber-950 sm:ml-10"
                         ref={restTimerRef}
                         role="status"
                       >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <Clock3
-                            aria-hidden="true"
-                            className="shrink-0 text-amber-700"
-                            size={18}
-                          />
-                          <span className="text-xs font-semibold sm:text-sm">
-                            Descanso
+                        <div className="flex items-center justify-between gap-2 px-3 py-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Clock3
+                              aria-hidden="true"
+                              className="shrink-0 text-amber-700"
+                              size={18}
+                            />
+                            <span className="text-xs font-semibold sm:text-sm">
+                              Descanso
+                            </span>
+                          </div>
+                          <span className="min-w-12 text-right text-lg font-bold tabular-nums">
+                            {Math.floor(restRemaining / 60)}:
+                            {String(restRemaining % 60).padStart(2, "0")}
                           </span>
+                          <button
+                            aria-label="Saltar descanso"
+                            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-amber-800 hover:bg-amber-100"
+                            onClick={() => {
+                              updateWorkoutProgress({
+                                restEndsAt: null,
+                                restSetId: null,
+                              });
+                            }}
+                            type="button"
+                          >
+                            <SkipForward aria-hidden="true" size={17} />
+                          </button>
                         </div>
-                        <span className="min-w-12 text-right text-lg font-bold tabular-nums">
-                          {Math.floor(restRemaining / 60)}:
-                          {String(restRemaining % 60).padStart(2, "0")}
-                        </span>
-                        <button
-                          aria-label="Saltar descanso"
-                          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-amber-800 hover:bg-amber-100"
-                          onClick={() => {
-                            updateWorkoutProgress({
-                              restEndsAt: null,
-                              restSetId: null,
-                            });
-                          }}
-                          type="button"
-                        >
-                          <SkipForward aria-hidden="true" size={17} />
-                        </button>
+                        <div className="h-2 w-full bg-amber-100">
+                          <div
+                            className="h-full rounded-r-full bg-gradient-to-r from-amber-400 to-orange-500 transition-[width] duration-300 ease-linear"
+                            style={{ width: `${restProgressPercent}%` }}
+                          />
+                        </div>
                       </div>
                     )}
                   </li>

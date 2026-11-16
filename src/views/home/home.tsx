@@ -26,6 +26,14 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
 });
 
 const weekDayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const workoutColors = [
+  "#075985",
+  "#0369a1",
+  "#0284c7",
+  "#0ea5e9",
+  "#38bdf8",
+  "#0891b2",
+];
 
 const measurementOptions = [
   { key: "chestCm", label: "Pecho" },
@@ -197,13 +205,13 @@ const Home = () => {
     return {
       day: weekDayLabels[index],
       key,
-      duration: 0,
-      workoutNames: [] as string[],
+      workoutDurations: {} as Record<string, number>,
     };
   });
   const workoutDurationByDate = new Map(
     workoutDurationByDay.map((entry) => [entry.key, entry]),
   );
+  const weeklyWorkouts: { id: string; name: string; color: string }[] = [];
 
   workouts.forEach((workout) => {
     if (!workout.startedAt) return;
@@ -217,8 +225,13 @@ const Home = () => {
       (completedAt.getTime() - new Date(workout.startedAt).getTime()) / 60_000,
     );
     if (duration >= 0) {
-      day.duration += duration;
-      day.workoutNames.push(workout.name);
+      const id = `workout-${workout.id}`;
+      day.workoutDurations[id] = duration;
+      weeklyWorkouts.push({
+        id,
+        name: workout.name,
+        color: workoutColors[weeklyWorkouts.length % workoutColors.length],
+      });
     }
   });
   const latestWeight = weightEntries.reduce<WeightEntry | null>(
@@ -503,19 +516,16 @@ const Home = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis unit=" min" width={72} />
-                  <Tooltip
-                    labelFormatter={(_, payload) =>
-                      payload[0]?.payload.workoutNames.join(", ") ||
-                      "Sin entrenamientos"
-                    }
-                    formatter={(value) => [`${value} min`, "Duración"]}
-                  />
-                  <Bar
-                    dataKey="duration"
-                    name="Duración"
-                    fill="#0284c7"
-                    radius={[4, 4, 0, 0]}
-                  />
+                  <Tooltip formatter={(value, name) => [`${value} min`, name]} />
+                  {weeklyWorkouts.map((workout) => (
+                    <Bar
+                      key={workout.id}
+                      dataKey={`workoutDurations.${workout.id}`}
+                      name={workout.name}
+                      stackId="workouts"
+                      fill={workout.color}
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>

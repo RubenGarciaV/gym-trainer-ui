@@ -123,6 +123,13 @@ const timestampDaysAgo = (daysAgo: number, hour: number) => {
   date.setHours(hour, 0, 0, 0);
   return date.toISOString();
 };
+const timestampWeekday = (weekday: number, hour: number) => {
+  const date = new Date(now);
+  const daysSinceMonday = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - daysSinceMonday + weekday);
+  date.setHours(hour, 0, 0, 0);
+  return date.toISOString();
+};
 
 const users = new Map<string, MockUser>();
 const demoUser: MockUser = {
@@ -193,6 +200,104 @@ const exerciseCatalog: MockExercise[] = [
     name: "Press militar",
     description: null,
     muscleGroups: ["SHOULDERS"],
+  },
+  {
+    id: "exercise-machine-overhead-press",
+    slug: "press-militar-maquina",
+    name: "Press militar en máquina",
+    description: null,
+    muscleGroups: ["SHOULDERS"],
+  },
+  {
+    id: "exercise-ez-bar-biceps-curl",
+    slug: "curl-biceps-barra-z",
+    name: "Curl de bíceps con barra Z",
+    description: null,
+    muscleGroups: ["ARMS"],
+  },
+  {
+    id: "exercise-incline-bench-curl",
+    slug: "curl-banco-inclinado",
+    name: "Curl en banco inclinado",
+    description: null,
+    muscleGroups: ["ARMS"],
+  },
+  {
+    id: "exercise-treadmill-running",
+    slug: "correr-en-cinta",
+    name: "Correr en cinta",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-treadmill-walking",
+    slug: "caminar-en-cinta",
+    name: "Caminar en cinta",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-incline-treadmill-walking",
+    slug: "caminata-inclinada-en-cinta",
+    name: "Caminata inclinada en cinta",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-stationary-bike",
+    slug: "bicicleta-estatica",
+    name: "Bicicleta estática",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-spinning-bike",
+    slug: "bicicleta-spinning",
+    name: "Bicicleta de spinning",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-elliptical",
+    slug: "eliptica",
+    name: "Elíptica",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-rowing-machine",
+    slug: "remo-ergometro",
+    name: "Remo en máquina",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-stair-climber",
+    slug: "escaladora",
+    name: "Escaladora",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-stepper",
+    slug: "stepper",
+    name: "Stepper",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-air-bike",
+    slug: "bicicleta-air-bike",
+    name: "Bicicleta de aire (air bike)",
+    description: null,
+    muscleGroups: ["CARDIO"],
+  },
+  {
+    id: "exercise-jump-rope",
+    slug: "cuerda-de-saltar",
+    name: "Cuerda de saltar",
+    description: null,
+    muscleGroups: ["CARDIO"],
   },
 ].map((exercise) => ({
   ...exercise,
@@ -270,18 +375,17 @@ const bodyMeasurementEntries: MockBodyMeasurementEntry[] = [
 }));
 
 const workoutTemplates = [
-  { day: 27, duration: 52, name: "Tren superior" },
-  { day: 23, duration: 46, name: "Pierna" },
-  { day: 19, duration: 61, name: "Full body" },
-  { day: 15, duration: 48, name: "Pecho y tríceps" },
-  { day: 11, duration: 57, name: "Espalda y bíceps" },
-  { day: 6, duration: 43, name: "Pierna" },
-  { day: 1, duration: 55, name: "Full body" },
+  { weekday: 0, duration: 52, name: "Tren superior" },
+  { weekday: 0, duration: 26, name: "Elíptica" },
+  { weekday: 1, duration: 46, name: "Pierna" },
+  { weekday: 2, duration: 61, name: "Full body" },
+  { weekday: 3, duration: 48, name: "Pecho y tríceps" },
+  { weekday: 4, duration: 57, name: "Espalda y bíceps" },
 ];
 
 const workouts: MockWorkout[] = workoutTemplates.map(
-  ({ day, duration, name }, index) => {
-    const completedAt = timestampDaysAgo(day, 19);
+  ({ weekday, duration, name }, index) => {
+    const completedAt = timestampWeekday(weekday, 19);
     const startedAt = new Date(
       new Date(completedAt).getTime() - duration * 60_000,
     ).toISOString();
