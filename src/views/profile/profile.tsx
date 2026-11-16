@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { apiRequest, jsonRequest } from "../../api/client";
 import type { BodyMeasurementEntry } from "../../api/types";
 import { useModal } from "../../components/modal-provider";
@@ -40,7 +40,7 @@ const measurementDateFormatter = new Intl.DateTimeFormat("es-ES", {
 });
 
 const Profile = () => {
-  const { showAlert } = useModal();
+  const { showAlert, confirmAction } = useModal();
   const { user, setUser, refreshSession, isSessionLoading, sessionError } =
     useSession();
   const [name, setName] = useState("");
@@ -62,6 +62,9 @@ const Profile = () => {
   );
   const [isLoadingMeasurements, setIsLoadingMeasurements] = useState(true);
   const [isSavingMeasurements, setIsSavingMeasurements] = useState(false);
+  const [deletingMeasurementId, setDeletingMeasurementId] = useState<
+    string | null
+  >(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -291,6 +294,39 @@ const Profile = () => {
     }
   };
 
+  const handleDeleteMeasurement = async (entry: BodyMeasurementEntry) => {
+    const date = measurementDateFormatter.format(new Date(entry.measuredAt));
+    if (
+      !(await confirmAction(
+        `¿Seguro que quieres eliminar las medidas del ${date}?`,
+        "Eliminar medidas",
+      ))
+    ) {
+      return;
+    }
+
+    setDeletingMeasurementId(entry.id);
+    try {
+      await apiRequest<void>(
+        `/api/v1/body-measurements/${encodeURIComponent(entry.id)}`,
+        { method: "DELETE" },
+      );
+      setBodyMeasurements((current) =>
+        current.filter((measurement) => measurement.id !== entry.id),
+      );
+      showAlert("success", "Las medidas corporales se han eliminado.");
+    } catch (requestError) {
+      showAlert(
+        "error",
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudieron eliminar tus medidas corporales.",
+      );
+    } finally {
+      setDeletingMeasurementId(null);
+    }
+  };
+
   const handleRetrySession = async () => {
     try {
       await refreshSession();
@@ -470,13 +506,35 @@ const Profile = () => {
                                 )}
                               </p>
                               {!isEditing && (
-                                <p
-                                  className="text-xs font-semibold text-sky-700 hover:text-sky-800"
-                                  onClick={() => handleStartEditMeasurement(entry)}
-                                  role="button"
-                                >
-                                  Editar
-                                </p>
+                                <div className="flex shrink-0 items-center gap-3">
+                                  <button
+                                    className="text-xs font-semibold text-sky-700 hover:text-sky-800"
+                                    disabled={deletingMeasurementId !== null}
+                                    onClick={() =>
+                                      handleStartEditMeasurement(entry)
+                                    }
+                                    type="button"
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    aria-label={`Eliminar medidas del ${measurementDateFormatter.format(
+                                      new Date(entry.measuredAt),
+                                    )}`}
+                                    className="inline-flex size-8 items-center justify-center rounded-lg text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={deletingMeasurementId !== null}
+                                    onClick={() =>
+                                      void handleDeleteMeasurement(entry)
+                                    }
+                                    type="button"
+                                  >
+                                    {deletingMeasurementId === entry.id ? (
+                                      <span className="text-xs">...</span>
+                                    ) : (
+                                      <Trash2 aria-hidden="true" size={16} />
+                                    )}
+                                  </button>
+                                </div>
                               )}
                             </div>
 

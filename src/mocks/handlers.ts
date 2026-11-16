@@ -1050,6 +1050,19 @@ export const handlers = [
     return HttpResponse.json(updatedEntry, { status: 200 });
   }),
 
+  http.delete("*/api/v1/body-measurements/:id", ({ request, params }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    const index = bodyMeasurementEntries.findIndex(
+      (entry) => entry.id === params.id && entry.userId === user.id,
+    );
+    if (index === -1) return jsonError("La medición no existe.", 404);
+
+    bodyMeasurementEntries.splice(index, 1);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get("*/api/v1/workouts", ({ request }) => {
     const { user, response } = requireActiveUser(request);
     if (response) return response;
