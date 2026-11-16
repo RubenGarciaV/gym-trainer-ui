@@ -248,8 +248,13 @@ const Profile = () => {
 
     if (!editingMeasurementId) return;
 
-    const measurements = getMeasurementPayload(editingMeasurementValues);
-    if (Object.keys(measurements).length === 0) {
+    const measurements: Partial<Record<MeasurementField, number | null>> = {};
+    for (const { key } of measurementFields) {
+      const value = editingMeasurementValues[key];
+      measurements[key] = value === "" ? null : Number(value);
+    }
+
+    if (Object.values(measurements).every((value) => value === null)) {
       showAlert("error", "Añade al menos una medida corporal.");
       return;
     }

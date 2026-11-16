@@ -1011,6 +1011,7 @@ export const handlers = [
       measurementKeys.some(
         (key) =>
           key in body &&
+          body[key] !== null &&
           (typeof body[key] !== "number" ||
             !Number.isFinite(body[key]) ||
             body[key] < 0.01 ||
