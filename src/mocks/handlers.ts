@@ -980,6 +980,75 @@ export const handlers = [
     return HttpResponse.json(entry, { status: 201 });
   }),
 
+  http.patch("*/api/v1/body-measurements/:id", async ({ request, params }) => {
+    const { user, response } = requireActiveUser(request);
+    if (response) return response;
+
+    const measurementId = params.id;
+    const index = bodyMeasurementEntries.findIndex(
+      (entry) => entry.id === measurementId && entry.userId === user.id,
+    );
+    if (index === -1) {
+      return jsonError("La medición no existe.", 404);
+    }
+
+    const body: unknown = await request.json();
+    const measurementKeys = [
+      "chestCm",
+      "waistCm",
+      "hipCm",
+      "armCm",
+      "thighCm",
+      "calfCm",
+    ] as const;
+    if (!isRecord(body)) {
+      return jsonError("Añade al menos una medida corporal válida.", 400);
+    }
+
+    const hasMeasurement = measurementKeys.some((key) => key in body);
+    if (
+      !hasMeasurement ||
+      measurementKeys.some(
+        (key) =>
+          key in body &&
+          (typeof body[key] !== "number" ||
+            !Number.isFinite(body[key]) ||
+            body[key] < 0.01 ||
+            body[key] > 999.99),
+      )
+    ) {
+      return jsonError(
+        "Las medidas deben estar entre 0.01 y 999.99 cm.",
+        400,
+      );
+    }
+
+    const measuredAt =
+      typeof body.measuredAt === "string" &&
+      Number.isFinite(Date.parse(body.measuredAt))
+        ? body.measuredAt
+        : null;
+    if (!measuredAt) {
+      return jsonError("La fecha de medición no es válida.", 400);
+    }
+
+    const previous = bodyMeasurementEntries[index];
+    const updatedEntry: MockBodyMeasurementEntry = {
+      ...previous,
+      chestCm: typeof body.chestCm === "number" ? body.chestCm : null,
+      waistCm: typeof body.waistCm === "number" ? body.waistCm : null,
+      hipCm: typeof body.hipCm === "number" ? body.hipCm : null,
+      armCm: typeof body.armCm === "number" ? body.armCm : null,
+      thighCm: typeof body.thighCm === "number" ? body.thighCm : null,
+      calfCm: typeof body.calfCm === "number" ? body.calfCm : null,
+      measuredAt,
+      createdAt: previous.createdAt,
+    };
+
+    bodyMeasurementEntries[index] = updatedEntry;
+    return HttpResponse.json(updatedEntry, { status: 200 });
+  }),
+
   http.get("*/api/v1/workouts", ({ request }) => {
     const { user, response } = requireActiveUser(request);
     if (response) return response;
