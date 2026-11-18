@@ -328,7 +328,9 @@ const Home = () => {
                       unit=" cm"
                       width={72}
                     />
-                    <Tooltip formatter={(value) => [`${value} cm`]} />
+                    <Tooltip
+                      formatter={(value, name) => [`${value} cm`, name]}
+                    />
                     {selectedMeasurement === "all" ? (
                       <>
                         <Legend />
